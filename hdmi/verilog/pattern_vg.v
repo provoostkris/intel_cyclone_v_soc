@@ -27,30 +27,30 @@ reg [B+FRACTIONAL_BITS-1:0] ramp_values; // 12-bit fractional end for ramp value
 
 always @(posedge clk_in)
 begin
- vn_out <= vn_in;
- hn_out <= hn_in;
- den_out <= dn_in;
+   vn_out <= vn_in;
+   hn_out <= hn_in;
+   den_out <= dn_in;
  if (reset)
- ramp_values <= 0;
+  ramp_values <= 0;
  else if (pattern == 8'b0) // no pattern
- begin
- r_out <= r_in;
- g_out <= g_in;
- b_out <= b_in;
- end
+   begin
+     r_out <= r_in;
+     g_out <= g_in;
+     b_out <= b_in;
+   end
  else if (pattern == 8'b1) // border
  begin
  if (dn_in && ((y == 12'b0) || (x == 12'b0) || (x == total_active_pix - 1) || (y == total_active_lines - 1)))
  begin
- r_out <= 8'hFF;
- g_out <= 8'hFF;
- b_out <= 8'hFF;
+   r_out <= 8'hFF;
+   g_out <= 8'hFF;
+   b_out <= 8'hFF;
  end
  else
  begin
- r_out <= r_in;
- g_out <= g_in;
- b_out <= b_in;
+   r_out <= r_in;
+   g_out <= g_in;
+   b_out <= b_in;
  end
  end
  else if (pattern == 8'd2) // moireX
