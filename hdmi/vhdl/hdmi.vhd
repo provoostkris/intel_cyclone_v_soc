@@ -20,7 +20,7 @@ entity hdmi is
     -- ADV7513
     HDMI_I2C_SCL      : out   std_logic; -- i2c
     HDMI_I2C_SDA      : inout std_logic; -- i2c
-    
+
     HDMI_TX_INT       : in  std_logic;
     HDMI_TX_HS        : out std_logic; -- HS output to ADV7513
     HDMI_TX_VS        : out std_logic; -- VS output to ADV7513
@@ -38,11 +38,11 @@ component vgahdmi
   clock      : in  std_logic;
   clock50    : in  std_logic;
   reset      : in  std_logic;
-  
+
   switchR    : in  std_logic;
   switchG    : in  std_logic;
   switchB    : in  std_logic;
-  
+
   hsync      : out std_logic;
   vsync      : out std_logic;
   dataEnable : out std_logic;
@@ -77,16 +77,36 @@ component pll is
     locked   : out std_logic         -- export
   );
 end component pll;
-  
-signal rst_pll_25   : std_logic;
-signal rst_pll_25_n : std_logic;
-signal rst_pll_50   : std_logic;
-signal rst_pll_50_n : std_logic;
 
-signal clk_pll_25  : std_logic;
-signal clk_pll_50  : std_logic;
-signal clk_pll_125 : std_logic;
-signal pll_locked  : std_logic;
+component hdmi_pll is
+  port (
+    refclk   : in  std_logic;        -- clk
+    rst      : in  std_logic;        -- reset
+    outclk_0 : out std_logic;        -- clk
+    outclk_1 : out std_logic;        -- clk
+    locked   : out std_logic         -- export
+  );
+end component hdmi_pll;
+
+signal rst_pll_25    : std_logic;
+signal rst_pll_25_n  : std_logic;
+signal rst_pll_50    : std_logic;
+signal rst_pll_50_n  : std_logic;
+signal rst_pll_40    : std_logic;
+signal rst_pll_40_n  : std_logic;
+signal rst_pll_74    : std_logic;
+signal rst_pll_74_n  : std_logic;
+signal rst_pll_148   : std_logic;
+signal rst_pll_148_n : std_logic;
+
+signal clk_pll_25       : std_logic;
+signal clk_pll_50       : std_logic;
+signal clk_pll_125      : std_logic;
+signal clk_pll_40       : std_logic;
+signal clk_pll_148      : std_logic;
+signal clk_pll_74       : std_logic;
+signal pll_locked       : std_logic;
+signal hdmi_pll_locked  : std_logic;
 
 -- local signals
 signal video_active : std_logic;
@@ -98,7 +118,7 @@ signal sw_db        : std_logic_vector(3 downto 0);
 
 -- signal that need to drive the HDcontroller
 type   t_a_std      is array ( integer range <> ) of std_logic;
-type   t_a_slv_24   is array ( integer range <> ) of std_logic_vector(23 downto 0); 
+type   t_a_slv_24   is array ( integer range <> ) of std_logic_vector(23 downto 0);
 
 signal clk_out      : t_a_std(0 to 1);
 signal hs_out       : t_a_std(0 to 1);
@@ -142,7 +162,43 @@ begin
   end if;
 end process p_rst_pll_50;
 
--- general purpose pll, generate some clocks
+--! syncronous resets
+p_rst_pll_40: process (clk_pll_40, hdmi_pll_locked)
+begin
+  if hdmi_pll_locked = '0' then
+    rst_pll_40   <= '1';
+    rst_pll_40_n <= '0';
+  elsif rising_edge(clk_pll_40) then
+    rst_pll_40   <= '0';
+    rst_pll_40_n <= '1';
+  end if;
+end process p_rst_pll_40;
+
+--! syncronous resets
+p_rst_pll_74: process (clk_pll_74, hdmi_pll_locked)
+begin
+  if hdmi_pll_locked = '0' then
+    rst_pll_74   <= '1';
+    rst_pll_74_n <= '0';
+  elsif rising_edge(clk_pll_40) then
+    rst_pll_74   <= '0';
+    rst_pll_74_n <= '1';
+  end if;
+end process p_rst_pll_74;
+
+--! syncronous resets
+p_rst_pll_148: process (clk_pll_148, hdmi_pll_locked)
+begin
+  if hdmi_pll_locked = '0' then
+    rst_pll_148   <= '1';
+    rst_pll_148_n <= '0';
+  elsif rising_edge(clk_pll_148) then
+    rst_pll_148   <= '0';
+    rst_pll_148_n <= '1';
+  end if;
+end process p_rst_pll_148;
+
+--! general purpose pll, generate some clocks
 i_pll : pll
   port map (
     refclk   => FPGA_CLK1_50,
@@ -152,6 +208,27 @@ i_pll : pll
     outclk_2 => clk_pll_125,      --! 125 MHz
     locked   => pll_locked
   );
+
+--! pll approximating HD resolution frequencies
+i_hdmi_pll : hdmi_pll
+  port map (
+    refclk   => FPGA_CLK2_50,
+    rst      => SW(0),
+    outclk_0 => clk_pll_40,        --!  40 MHz
+    outclk_1 => clk_pll_148,       --!  148.5 MHz
+    locked   => hdmi_pll_locked
+  );
+  
+--! digital 'PLL'
+p_pll: process (clk_pll_148, rst_pll_148)
+begin
+  if rst_pll_148 = '1' then
+    clk_pll_74   <= '0';
+  elsif rising_edge(clk_pll_148) then
+    clk_pll_74   <= not clk_pll_74;
+  end if;
+end process p_pll;
+  
 
 --! get rid of the bounce
 p_bounce: process (clk_pll_25, rst_pll_25)
@@ -196,16 +273,16 @@ end process p_bounce;
 --! implementation (0)
 --!
 
-  i_vgaHdmi: vgaHdmi  
+  i_vgaHdmi: vgaHdmi
     port map(
     clock      => clk_pll_25,
     clock50    => clk_pll_50,
     reset      => not hdmi_hold,
-    
-    switchR    => SW(1),
-    switchG    => SW(2),
-    switchB    => SW(3),
-    
+
+    switchR    => sw_db(1),
+    switchG    => sw_db(2),
+    switchB    => sw_db(3),
+
     hsync      => hs_out(0),
     vsync      => vs_out(0),
     dataEnable => de_out(0),
@@ -219,35 +296,35 @@ end process p_bounce;
 
   i_timing_generator: entity work.timing_generator(rtl)
     generic map (
-      RESOLUTION  => "VGA", 
-      GEN_PIX_LOC => false, 
+      RESOLUTION  => "VGA",
+      GEN_PIX_LOC => false,
       OBJECT_SIZE => 16
       )
     port map (
       rst           => not hdmi_hold,
-      clk           => clk_pll_25, 
-      hsync         => hs_out(1), 
-      vsync         => vs_out(1), 
-      video_active  => video_active, 
-      pixel_x       => open, 
+      clk           => clk_pll_25,
+      hsync         => hs_out(1),
+      vsync         => vs_out(1),
+      video_active  => video_active,
+      pixel_x       => open,
       pixel_y       => open
     );
 
   i_pattern_generator: entity work.pattern_generator(rtl)
     port map (
       rst           =>  not hdmi_hold,
-      clk           =>  clk_pll_25, 
-      video_active  =>  video_active, 
+      clk           =>  clk_pll_25,
+      video_active  =>  video_active,
       rgb           =>  rgb(1)
       );
-      
+
       de_out(1)  <= video_active;
       clk_out(1) <= not clk_pll_25;
-      
+
 
 --!
 --! select between different implementations
---! 
+--!
 
   p_driver: process (clk_pll_25, hdmi_hold)
   begin
@@ -263,9 +340,9 @@ end process p_bounce;
       HDMI_TX_DE                  <= de_out(g_imp);
     end if;
   end process p_driver;
-  
+
   -- select the clock when reset is done
-  HDMI_TX_CLK <= clk_out(g_imp) and hdmi_hold;
+  HDMI_TX_CLK <= not clk_pll_25 and hdmi_hold;
 
 --!
 --! setup for the registers in the HDMI controller
@@ -299,7 +376,7 @@ i_i2c_hdmi_config: i2c_hdmi_config
   port map (
     iCLK        => clk_pll_50,
     iRST_N      => i2c_hold,
-    
+
     I2C_SCLK    => HDMI_I2C_SCL,
     I2C_SDAT    => HDMI_I2C_SDA,
     HDMI_TX_INT => HDMI_TX_INT,
