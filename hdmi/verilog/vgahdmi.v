@@ -41,6 +41,20 @@ initial begin
   vgaClock   = 0;
 end
 
+localparam H_VIDEO =  640;    // 640;   1280,
+localparam H_FP    =   16;    //  16;     72,
+localparam H_SYNC  =   96;    //  96;     80,
+localparam H_BP    =   48;    //  48;    216,
+localparam H_TOTAL =  800;    // 800;   1648,
+localparam V_VIDEO =  480;    // 480;    720,
+localparam V_FP    =   10;    //  10;      3,
+localparam V_SYNC  =    2;    //   2;      5,
+localparam V_BP    =   33;    //  33;     22,
+localparam V_TOTAL =  525;    // 525;    750,
+          // H_POL               '1',    '1',
+          // V_POL               '1',    '1',
+          // ACTIVE              '1'     '1'
+    
 // Manejo de Pixeles y Sincronizacion
 
 always @(posedge clock or posedge reset) begin
@@ -52,24 +66,24 @@ always @(posedge clock or posedge reset) begin
   end
   else begin
     // Display Horizontal
-    if(pixelH==0 && pixelV!=524) begin
+    if(pixelH==0 && pixelV!=(V_TOTAL-1)) begin
       pixelH<=pixelH+1'b1;
       pixelV<=pixelV+1'b1;
     end
-    else if(pixelH==0 && pixelV==524) begin
+    else if(pixelH==0 && pixelV==(V_TOTAL-1)) begin
       pixelH <= pixelH + 1'b1;
       pixelV <= 0; // pixel 525
     end
-    else if(pixelH<=640) pixelH <= pixelH + 1'b1;
+    else if(pixelH<=H_VIDEO) pixelH <= pixelH + 1'b1;
     // Front Porch
-    else if(pixelH<=656) pixelH <= pixelH + 1'b1;
+    else if(pixelH<=(H_VIDEO+H_FP)) pixelH <= pixelH + 1'b1;
     // Sync Pulse
-    else if(pixelH<=752) begin
+    else if(pixelH<=(H_TOTAL-H_BP)) begin
       pixelH <= pixelH + 1'b1;
       hsync  <= 0;
     end
     // Back Porch
-    else if(pixelH<799) begin
+    else if(pixelH<(H_TOTAL-1)) begin
       pixelH <= pixelH+1'b1;
       hsync  <= 1;
     end
@@ -77,7 +91,7 @@ always @(posedge clock or posedge reset) begin
 
     // Manejo Senal Vertical
     // Sync Pulse
-    if(pixelV == 491 || pixelV == 492)
+    if( pixelV > (V_VIDEO+V_FP) || pixelV < (V_VIDEO+V_FP+V_SYNC+1))
       vsync <= 0;
     else
       vsync <= 1;
@@ -89,7 +103,7 @@ always @(posedge clock or posedge reset) begin
   if(reset) dataEnable<= 0;
 
   else begin
-    if(pixelH >= 0 && pixelH <640 && pixelV >= 0 && pixelV < 480)
+    if(pixelH >= 0 && pixelH <H_VIDEO && pixelV >= 0 && pixelV < V_VIDEO)
       dataEnable <= 1;
     else
       dataEnable <= 0;
