@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<simPackage>
+ <file path="hdmi_pll_sim/hdmi_pll.vho" type="VHDL" />
+ <topLevel name="hdmi_pll" />
+ <deviceFamily name="cyclonev" />
+</simPackage>
