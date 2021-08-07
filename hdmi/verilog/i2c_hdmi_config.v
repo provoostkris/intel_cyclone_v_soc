@@ -20,8 +20,8 @@ output READY ;
 //	Internal Registers/Wires
 reg	[15:0]	mI2C_CLK_DIV;
 reg	[23:0]	mI2C_DATA;
-reg				mI2C_CTRL_CLK;
-reg				mI2C_GO;
+reg				  mI2C_CTRL_CLK;
+reg				  mI2C_GO;
 wire				mI2C_END;
 wire				mI2C_ACK;
 reg	[15:0]	LUT_DATA;
@@ -122,16 +122,16 @@ begin
 	case(LUT_INDEX)
 	
 	//	Video Config Data
-	0	:	LUT_DATA	<=	16'h9803;  //Must be set to 0x03 for proper operation
-	1	:	LUT_DATA	<=	16'h0100;  //Set 'N' value at 6144
-	2	:	LUT_DATA	<=	16'h0218;  //Set 'N' value at 6144
-	3	:	LUT_DATA	<=	16'h0300;  //Set 'N' value at 6144
-	4	:	LUT_DATA	<=	16'h1470;  // Set Ch count in the channel status to 8.
-	5	:	LUT_DATA	<=	16'h1520;  //Input 444 (RGB or YCrCb) with Separate Syncs, 48kHz fs
-	6	:	LUT_DATA	<=	16'h1630;  //Output format 444, 24-bit input
-	7	:	LUT_DATA	<=	16'h1846;  //Disable CSC
-	8	:	LUT_DATA	<=	16'h4080;  //General control packet enable
-	9	:	LUT_DATA	<=	16'h4110;  //Power down control
+	0	  :	LUT_DATA	<=	16'h9803;  //Must be set to 0x03 for proper operation
+	1	  :	LUT_DATA	<=	16'h0100;  //Set 'N' value at 6144
+	2	  :	LUT_DATA	<=	16'h0218;  //Set 'N' value at 6144
+	3	  :	LUT_DATA	<=	16'h0300;  //Set 'N' value at 6144
+	4	  :	LUT_DATA	<=	16'h1470;  // Set Ch count in the channel status to 8.
+	5	  :	LUT_DATA	<=	16'h1520;  //Input 444 (RGB or YCrCb) with Separate Syncs, 48kHz fs
+	6	  :	LUT_DATA	<=	16'h1630;  //Output format 444, 24-bit input
+	7	  :	LUT_DATA	<=	16'h1846;  //Disable CSC
+	8	  :	LUT_DATA	<=	16'h4080;  //General control packet enable
+	9	  :	LUT_DATA	<=	16'h4110;  //Power down control
 	10	:	LUT_DATA	<=	16'h49A8;  //Set dither mode - 12-to-10 bit
 	11	:	LUT_DATA	<=	16'h5510;  //Set RGB in AVI infoframe
 	12	:	LUT_DATA	<=	16'h5608;  //Set active format aspect
