@@ -94,19 +94,22 @@ signal rst_pll_50    : std_logic;
 signal rst_pll_50_n  : std_logic;
 signal rst_pll_40    : std_logic;
 signal rst_pll_40_n  : std_logic;
-signal rst_pll_74    : std_logic;
-signal rst_pll_74_n  : std_logic;
-signal rst_pll_148   : std_logic;
-signal rst_pll_148_n : std_logic;
+signal rst_pll_65    : std_logic;
+signal rst_pll_65_n  : std_logic;
 
 signal clk_pll_25       : std_logic;
 signal clk_pll_50       : std_logic;
 signal clk_pll_125      : std_logic;
 signal clk_pll_40       : std_logic;
-signal clk_pll_148      : std_logic;
-signal clk_pll_74       : std_logic;
+signal clk_pll_65       : std_logic;
 signal pll_locked       : std_logic;
 signal hdmi_pll_locked  : std_logic;
+
+-- now select the pixel clock/reset depending on the resolution
+alias clk_pixel   : std_logic is clk_pll_65;
+alias rst_pixel   : std_logic is rst_pll_65;
+alias rst_pixel_n : std_logic is rst_pll_65_n;
+
 
 -- local signals
 signal video_active : std_logic;
@@ -175,28 +178,16 @@ begin
 end process p_rst_pll_40;
 
 --! syncronous resets
-p_rst_pll_74: process (clk_pll_74, hdmi_pll_locked)
+p_rst_pll_65 : process (clk_pll_65 , hdmi_pll_locked)
 begin
   if hdmi_pll_locked = '0' then
-    rst_pll_74   <= '1';
-    rst_pll_74_n <= '0';
-  elsif rising_edge(clk_pll_40) then
-    rst_pll_74   <= '0';
-    rst_pll_74_n <= '1';
+    rst_pll_65    <= '1';
+    rst_pll_65_n  <= '0';
+  elsif rising_edge(clk_pll_65 ) then
+    rst_pll_65    <= '0';
+    rst_pll_65_n  <= '1';
   end if;
-end process p_rst_pll_74;
-
---! syncronous resets
-p_rst_pll_148: process (clk_pll_148, hdmi_pll_locked)
-begin
-  if hdmi_pll_locked = '0' then
-    rst_pll_148   <= '1';
-    rst_pll_148_n <= '0';
-  elsif rising_edge(clk_pll_148) then
-    rst_pll_148   <= '0';
-    rst_pll_148_n <= '1';
-  end if;
-end process p_rst_pll_148;
+end process p_rst_pll_65 ;
 
 --! general purpose pll, generate some clocks
 i_pll : pll
@@ -215,20 +206,10 @@ i_hdmi_pll : hdmi_pll
     refclk   => FPGA_CLK1_50,
     rst      => SW(0),
     outclk_0 => clk_pll_40,        --!  40 MHz
-    outclk_1 => clk_pll_148,       --!  148.5 MHz
+    outclk_1 => clk_pll_65 ,       --!  148.5 MHz
     locked   => hdmi_pll_locked
   );
-  
---! digital 'PLL'
-p_pll: process (clk_pll_148, rst_pll_148)
-begin
-  if rst_pll_148 = '1' then
-    clk_pll_74   <= '0';
-  elsif rising_edge(clk_pll_148) then
-    clk_pll_74   <= not clk_pll_74;
-  end if;
-end process p_pll;
-  
+
 
 --! get rid of the bounce
 p_bounce: process (clk_pll_25, rst_pll_25)
@@ -275,9 +256,9 @@ end process p_bounce;
 
   i_vgaHdmi: vgaHdmi
     port map(
-    clock      => clk_pll_40,
+    clock      => clk_pixel,
     clock50    => clk_pll_50,
-    reset      => rst_pll_40,
+    reset      => rst_pixel,
 
     switchR    => sw_db(1),
     switchG    => sw_db(2),
@@ -296,13 +277,13 @@ end process p_bounce;
 
   i_timing_generator: entity work.timing_generator(rtl)
     generic map (
-      RESOLUTION  => "VGA",
+      RESOLUTION  => "SVGA",
       GEN_PIX_LOC => false,
       OBJECT_SIZE => 16
       )
     port map (
-      rst           => rst_pll_25,
-      clk           => clk_pll_25,
+      rst           => rst_pixel,
+      clk           => clk_pixel,
       hsync         => hs_out(1),
       vsync         => vs_out(1),
       video_active  => video_active,
@@ -312,28 +293,28 @@ end process p_bounce;
 
   i_pattern_generator: entity work.pattern_generator(rtl)
     port map (
-      rst           =>  rst_pll_25,
-      clk           =>  clk_pll_25,
+      rst           =>  rst_pixel,
+      clk           =>  clk_pixel,
       video_active  =>  video_active,
       rgb           =>  rgb(1)
       );
 
       de_out(1)  <= video_active;
-      clk_out(1) <= not clk_pll_25;
+      clk_out(1) <= not clk_pll_40;
 
 
 --!
 --! select between different implementations
 --!
 
-  p_driver: process (clk_pll_40, hdmi_hold)
+  p_driver: process (clk_pixel, rst_pixel_n)
   begin
-    if hdmi_hold = '0' then
+    if rst_pixel_n = '0' then
       HDMI_TX_D                   <= ( others => '0');
       HDMI_TX_HS                  <= '1';
       HDMI_TX_VS                  <= '1';
       HDMI_TX_DE                  <= '0';
-    elsif rising_edge(clk_pll_40) then
+    elsif rising_edge(clk_pixel) then
       HDMI_TX_D                   <= rgb(g_imp);
       HDMI_TX_HS                  <= hs_out(g_imp);
       HDMI_TX_VS                  <= vs_out(g_imp);
@@ -342,7 +323,7 @@ end process p_bounce;
   end process p_driver;
 
   -- select the clock when reset is done
-  HDMI_TX_CLK <= not clk_pll_40 and hdmi_hold;
+  HDMI_TX_CLK <= not clk_pixel and rst_pixel_n;
 
 --!
 --! setup for the registers in the HDMI controller
