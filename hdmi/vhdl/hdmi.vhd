@@ -212,7 +212,7 @@ i_pll : pll
 --! pll approximating HD resolution frequencies
 i_hdmi_pll : hdmi_pll
   port map (
-    refclk   => FPGA_CLK2_50,
+    refclk   => FPGA_CLK1_50,
     rst      => SW(0),
     outclk_0 => clk_pll_40,        --!  40 MHz
     outclk_1 => clk_pll_148,       --!  148.5 MHz
@@ -275,9 +275,9 @@ end process p_bounce;
 
   i_vgaHdmi: vgaHdmi
     port map(
-    clock      => clk_pll_25,
+    clock      => clk_pll_40,
     clock50    => clk_pll_50,
-    reset      => not hdmi_hold,
+    reset      => rst_pll_40,
 
     switchR    => sw_db(1),
     switchG    => sw_db(2),
@@ -301,7 +301,7 @@ end process p_bounce;
       OBJECT_SIZE => 16
       )
     port map (
-      rst           => not hdmi_hold,
+      rst           => rst_pll_25,
       clk           => clk_pll_25,
       hsync         => hs_out(1),
       vsync         => vs_out(1),
@@ -312,7 +312,7 @@ end process p_bounce;
 
   i_pattern_generator: entity work.pattern_generator(rtl)
     port map (
-      rst           =>  not hdmi_hold,
+      rst           =>  rst_pll_25,
       clk           =>  clk_pll_25,
       video_active  =>  video_active,
       rgb           =>  rgb(1)
@@ -326,14 +326,14 @@ end process p_bounce;
 --! select between different implementations
 --!
 
-  p_driver: process (clk_pll_25, hdmi_hold)
+  p_driver: process (clk_pll_40, hdmi_hold)
   begin
     if hdmi_hold = '0' then
       HDMI_TX_D                   <= ( others => '0');
       HDMI_TX_HS                  <= '1';
       HDMI_TX_VS                  <= '1';
       HDMI_TX_DE                  <= '0';
-    elsif rising_edge(clk_pll_25) then
+    elsif rising_edge(clk_pll_40) then
       HDMI_TX_D                   <= rgb(g_imp);
       HDMI_TX_HS                  <= hs_out(g_imp);
       HDMI_TX_VS                  <= vs_out(g_imp);
@@ -342,7 +342,7 @@ end process p_bounce;
   end process p_driver;
 
   -- select the clock when reset is done
-  HDMI_TX_CLK <= not clk_pll_25 and hdmi_hold;
+  HDMI_TX_CLK <= not clk_pll_40 and hdmi_hold;
 
 --!
 --! setup for the registers in the HDMI controller

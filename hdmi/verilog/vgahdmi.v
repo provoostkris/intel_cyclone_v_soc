@@ -41,19 +41,22 @@ initial begin
   vgaClock   = 0;
 end
 
-localparam H_VIDEO =  640;    // 640;   1280,
-localparam H_FP    =   16;    //  16;     72,
-localparam H_SYNC  =   96;    //  96;     80,
-localparam H_BP    =   48;    //  48;    216,
-localparam H_TOTAL =  800;    // 800;   1648,
-localparam V_VIDEO =  480;    // 480;    720,
-localparam V_FP    =   10;    //  10;      3,
-localparam V_SYNC  =    2;    //   2;      5,
-localparam V_BP    =   33;    //  33;     22,
-localparam V_TOTAL =  525;    // 525;    750,
-          // H_POL               '1',    '1',
-          // V_POL               '1',    '1',
-          // ACTIVE              '1'     '1'
+// Common used resolutions
+// http://martin.hinner.info/vga/timing.html
+// resolution                 // 640x480 - 800x600    - 1024x768
+//pixel clock                 // 25.175  - 40.000     - 65.000 
+localparam H_VIDEO =   800;    // 640;       800;        1024;
+localparam H_FP    =    40;    //  16;        40;          24;
+localparam H_SYNC  =   128;    //  96;       128;         136;
+localparam H_BP    =    88;    //  48;        88;         160;
+localparam H_TOTAL =  1056;    // 800;      1056;        1688;
+localparam V_VIDEO =   600;    // 480;       600;         768;
+localparam V_FP    =     1;    //  10;         1;           3;
+localparam V_SYNC  =     4;    //   2;         4;           6;
+localparam V_BP    =    23;    //  33;        23;          29;
+localparam V_TOTAL =   628;    // 525;       628;         806;
+localparam H_POL   =     1;    //   0;         1;           0;
+localparam V_POL   =     1;    //   0;         1;           0;
     
 // Manejo de Pixeles y Sincronizacion
 
