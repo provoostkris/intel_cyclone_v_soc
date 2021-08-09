@@ -326,7 +326,7 @@ end process p_bounce;
   end process p_driver;
 
   -- select the clock when reset is done
-  HDMI_TX_CLK <= clk_pixel and rst_pixel_n;
+  HDMI_TX_CLK <= not clk_pixel and rst_pixel_n;
 
 --!
 --! setup for the registers in the HDMI controller
