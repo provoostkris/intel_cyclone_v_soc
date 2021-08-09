@@ -7,7 +7,7 @@ use     ieee.std_logic_misc.all;
 
 entity hdmi is
   generic (
-    g_imp             : in    natural range 0 to 1 := 0
+    g_imp             : in    natural range 0 to 1 := 1
   );
   port (
     FPGA_CLK1_50      : in    std_ulogic; --! FPGA clock 1 input 50 MHz
@@ -106,9 +106,9 @@ signal pll_locked       : std_logic;
 signal hdmi_pll_locked  : std_logic;
 
 -- now select the pixel clock/reset depending on the resolution
-alias clk_pixel   : std_logic is clk_pll_65;
-alias rst_pixel   : std_logic is rst_pll_65;
-alias rst_pixel_n : std_logic is rst_pll_65_n;
+alias clk_pixel   : std_logic is clk_pll_40;
+alias rst_pixel   : std_logic is rst_pll_40;
+alias rst_pixel_n : std_logic is rst_pll_40_n;
 
 
 -- local signals
@@ -299,6 +299,9 @@ end process p_bounce;
       rgb           =>  rgb(1)
       );
 
+
+      -- rgb(1)( 7 downto 0) <= ( others => '1');
+      -- rgb(1)(23 downto 8) <= ( others => '0');
       de_out(1)  <= video_active;
       clk_out(1) <= not clk_pll_40;
 
@@ -323,7 +326,7 @@ end process p_bounce;
   end process p_driver;
 
   -- select the clock when reset is done
-  HDMI_TX_CLK <= not clk_pixel and rst_pixel_n;
+  HDMI_TX_CLK <= clk_pixel and rst_pixel_n;
 
 --!
 --! setup for the registers in the HDMI controller

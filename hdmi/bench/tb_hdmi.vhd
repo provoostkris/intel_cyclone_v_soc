@@ -52,9 +52,6 @@ begin
 end process;
 
 dut: entity work.hdmi(rtl)
-  generic map (
-    g_imp             => 1
-  )
   port map (
     FPGA_CLK1_50      => clk,
     FPGA_CLK2_50      => clk,
