@@ -1,4 +1,7 @@
--- provoost kris
+------------------------------------------------------------------------------
+--  TOP level design file for HDMI controller <> Terrasic DE10 nano Cyclone 5 design
+--  rev. 1.0 : 2020 Provoost Kris
+------------------------------------------------------------------------------
 
 library ieee;
 use     ieee.std_logic_1164.all;

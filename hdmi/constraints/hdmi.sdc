@@ -104,3 +104,7 @@ set_output_delay -clock [get_clocks hdmi_tx_clk] -min ${HDMI_MIN} [get_ports {hd
 
 set_output_delay -clock [get_clocks hdmi_tx_clk] -max ${HDMI_MAX} [get_ports {hdmi_tx_vs}]
 set_output_delay -clock [get_clocks hdmi_tx_clk] -min ${HDMI_MIN} [get_ports {hdmi_tx_vs}]
+
+# I2C IO
+set_input_delay  -clock [get_clocks {hdmi_i2c_scl}] 10 [get_ports {hdmi_i2c_sda}]
+set_output_delay -clock [get_clocks {hdmi_i2c_scl}] 10 [get_ports {hdmi_i2c_sda}]
