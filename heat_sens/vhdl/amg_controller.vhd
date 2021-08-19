@@ -17,7 +17,8 @@ entity amg_controller is
     data_wr   : out     std_logic_vector(7 downto 0); --data to write to slave
     busy      : in      std_logic;                    --indicates transaction in progress
     data_rd   : in      std_logic_vector(7 downto 0); --data read from slave
-    ack_error : in      std_logic                     --flag if improper acknowledge from slave
+    ack_error : in      std_logic;                    --flag if improper acknowledge from slave
+    mean      : out     std_logic_vector(15 downto 0) --the average of all values
   );
 end amg_controller;
 
@@ -72,7 +73,10 @@ architecture rtl of amg_controller is
   constant c_pixel_area : integer := 64;
   type   t_a_slv_16     is array ( integer range <> ) of std_logic_vector(15 downto 0);
   signal heat_values    : t_a_slv_16(0 to c_pixel_area-1);
-  signal cnt_pix        : integer range 0 to c_pixel_area;
+  signal cnt_pix        : integer range 0 to c_pixel_area-1;
+--! sidebind information
+  signal calc_mean_ena  : std_logic;
+  signal mean_values    : unsigned(31 downto 0);
 
 begin
 
@@ -91,12 +95,14 @@ begin
   process(clk, reset_n)
   begin
     if(reset_n = '0') then
-      state     <= idle;
-      ena       <= '0';
-      addr      <= ( others => '0');
-      rw        <= '0';
-      data_wr   <= ( others => '0');
-      cnt_pix   <= 0;
+      state          <= idle;
+      ena            <= '0';
+      addr           <= ( others => '0');
+      rw             <= '0';
+      data_wr        <= ( others => '0');
+      cnt_pix        <= 0;
+      heat_values    <= ( others => ( others => '0'));
+      calc_mean_ena  <= '0';
     elsif(clk'event and clk = '1') then
 
         -- set address for chip
@@ -104,6 +110,7 @@ begin
 
         case state is
           when idle =>
+            calc_mean_ena <= '0';
             -- state control
             if busy = '0' then
               state   <=  amg_reset;
@@ -179,20 +186,42 @@ begin
             -- store the heat value
             heat_values(cnt_pix)(15 downto 8) <= data_rd;
           when amg_process_area =>
-            if cnt_pix < c_pixel_area then 
+            if cnt_pix < c_pixel_area-1 then 
               cnt_pix <=  cnt_pix + 1;
               state   <=  amg_read_pixels_addr;
             else
+              cnt_pix <= 0;
               state   <=  amg_read_done;
             end if;
           when amg_read_done =>
-            -- do some stuff with the pixel area
-            -- and return to idle
+            calc_mean_ena <= '1';
+            -- state control
+            state   <=  idle;
 
           when others =>
               state   <=  idle;
         end case;
       end if;
   end process;
-
+  
+  -- perfrom a contineous averaging of the heat_values
+  -- to get a mean temperature
+  -- for now just take MSBs of the value
+  process(clk, reset_n)
+  begin
+    if(reset_n = '0') then
+      mean_values   <= ( others => '0');
+      mean          <= ( others => '0');
+    elsif(clk'event and clk = '1') then
+    if state = idle then
+      mean_values   <= ( others => '0');
+    elsif state = amg_process_area then
+      mean_values   <= mean_values  + unsigned(heat_values(cnt_pix));
+    end if;
+    if calc_mean_ena = '1' then
+      mean  <= std_logic_vector(mean_values(31 downto 16));
+    end if;  
+    end if;
+  end process;
+  
 end rtl;
