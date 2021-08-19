@@ -62,17 +62,18 @@ signal data_wr        : std_logic_vector(7 downto 0); --data to write to slave
 signal busy           : std_logic;                    --indicates transaction in progress
 signal data_rd        : std_logic_vector(7 downto 0); --data read from slave
 signal ack_error      : std_logic;                    --flag if improper acknowledge from slave
+signal mean           : std_logic_vector(15 downto 0);--the average of all values
 
 begin
 
 --! top level assigments
 led(1)                  <= '0';
 led(2)                  <= '0';
-led(3)                  <= '0';
-led(4)                  <= '0';
-led(5)                  <= '0';
-led(6)                  <= '0';
-led(7)                  <= '0';
+led(3)                  <= pll_locked;
+led(4)                  <= busy;
+led(5)                  <= ack_error;
+led(6)                  <= mean(mean'low);
+led(7)                  <= mean(mean'high);
 
 --! syncronous resets
 p_rst_pll_25: process (clk_pll_25, pll_locked)
@@ -157,7 +158,8 @@ i_amg_controller: entity work.amg_controller
     data_wr   => data_wr         ,        --data to write to slave
     busy      => busy            ,        --indicates transaction in progress
     data_rd   => data_rd         ,        --data read from slave
-    ack_error => ack_error                --flag if improper acknowledge from slave
+    ack_error => ack_error       ,        --flag if improper acknowledge from slave
+    mean      => mean                     --the average of all values
     );
 
 
