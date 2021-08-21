@@ -97,6 +97,7 @@ begin
 
   --state machine control
   process(clk, reset_n)
+    variable v_pixel_addr : unsigned(7 downto 0);
   begin
     if(reset_n = '0') then
       state          <= idle;
@@ -109,6 +110,7 @@ begin
         heat_values    <= ( others => ( others => '0'));
       end if;
       calc_mean_ena  <= '0';
+      v_pixel_addr   := ( others => '0');
     elsif(clk'event and clk = '1') then
 
         -- set address for chip
@@ -163,9 +165,11 @@ begin
               state   <=  amg_read_pixels_addr;
             end if;
           when amg_read_pixels_addr =>
-          -- 64 x
+            -- for this step set the pixel of interest address
+            v_pixel_addr  := unsigned(c_amg_register_t01l) + to_unsigned((2*cnt_pix),8);
+            -- control
             rw        <= '0';
-            data_wr   <= c_amg_register_t01l;
+            data_wr   <= std_logic_vector(v_pixel_addr) ;
             ena       <= not busy_shift(busy_shift'high) ;
             -- state control
             if busy_shift = c_busy_is_over then
