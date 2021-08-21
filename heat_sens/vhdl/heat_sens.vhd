@@ -9,9 +9,6 @@ use     ieee.numeric_std.all;
 use     ieee.std_logic_misc.all;
 
 entity heat_sens is
-  generic (
-    g_imp             : in    natural range 0 to 1 := 1
-  );
   port (
     FPGA_CLK1_50      : in    std_ulogic; --! FPGA clock 1 input 50 MHz
     FPGA_CLK2_50      : in    std_ulogic; --! FPGA clock 2 input 50 MHz
@@ -23,7 +20,6 @@ entity heat_sens is
     -- ADV7513
     AMG_I2C_SCL       : inout std_logic; -- i2c
     AMG_I2C_SDA       : inout std_logic  -- i2c
-
   );
 end;
 
@@ -67,8 +63,8 @@ signal mean           : std_logic_vector(15 downto 0);--the average of all value
 begin
 
 --! top level assigments
-led(1)                  <= '0';
-led(2)                  <= '0';
+led(1)                  <= or_reduce(KEY);
+led(2)                  <= or_reduce(SW);
 led(3)                  <= pll_locked;
 led(4)                  <= busy;
 led(5)                  <= ack_error;
