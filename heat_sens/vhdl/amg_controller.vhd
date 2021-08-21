@@ -31,8 +31,9 @@ architecture rtl of amg_controller is
   constant c_busy_is_over         : std_logic_vector(3 downto 0) := "1100";
   constant c_busy_is_busy         : std_logic_vector(3 downto 0) := "1111";
 
---! amg8833 definitiois
-  constant c_amg_addr             : std_logic_vector(7 downto 0) := x"68";
+--! amg8833 definitiois addr depends on pull-up/down
+  -- constant c_amg_addr             : std_logic_vector(7 downto 0) := x"68";
+  constant c_amg_addr             : std_logic_vector(7 downto 0) := x"69";
   --! register addresses
   constant c_amg_register_pctl    : std_logic_vector(7 downto 0) := x"00"; --! power control register
   constant c_amg_register_rst     : std_logic_vector(7 downto 0) := x"01"; --! reset register
