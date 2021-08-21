@@ -8,6 +8,9 @@ use     ieee.std_logic_1164.all;
 use     ieee.numeric_std.all;
 
 entity amg_controller is
+  GENERIC(
+    g_arr_init : boolean := false
+    );
   port(
     clk       : in      std_logic;                    --system clock
     reset_n   : in      std_logic;                    --active low reset
@@ -101,7 +104,9 @@ begin
       rw             <= '0';
       data_wr        <= ( others => '0');
       cnt_pix        <= 0;
-      heat_values    <= ( others => ( others => '0'));
+      if g_arr_init = true then
+        heat_values    <= ( others => ( others => '0'));
+      end if;
       calc_mean_ena  <= '0';
     elsif(clk'event and clk = '1') then
 
