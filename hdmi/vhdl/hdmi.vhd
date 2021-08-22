@@ -10,7 +10,7 @@ use     ieee.std_logic_misc.all;
 
 entity hdmi is
   generic (
-    g_imp             : in    natural range 0 to 1 := 1
+    g_imp             : in    natural range 0 to 2 := 2
   );
   port (
     FPGA_CLK1_50      : in    std_ulogic; --! FPGA clock 1 input 50 MHz
@@ -115,22 +115,35 @@ alias rst_pixel_n : std_logic is rst_pll_40_n;
 
 
 -- local signals
-signal video_active : std_logic;
-signal i2c_rdy      : std_logic;
-signal i2c_hold     : std_logic;
-signal hdmi_hold    : std_logic;
-signal key_db       : std_logic_vector(1 downto 0);
-signal sw_db        : std_logic_vector(3 downto 0);
+constant OBJECT_SIZE  : natural := 16;
+constant PIXEL_SIZE   : natural := 24;
+constant ram_d        : natural := 3*3;
+constant ram_x        : natural := 8;
+constant ram_y        : natural := 8;
+
+signal video_active   : std_logic;
+signal pixel_x        : std_logic_vector(OBJECT_SIZE-1 downto 0);
+signal pixel_y        : std_logic_vector(OBJECT_SIZE-1 downto 0);
+signal ram_wr_ena     : std_logic;
+signal ram_wr_dat     : std_logic_vector(ram_d-1 downto 0);
+signal ram_wr_add     : std_logic_vector(ram_x+ram_y-1 downto 0);
+
+signal i2c_rdy        : std_logic;
+signal i2c_hold       : std_logic;
+  
+signal hdmi_hold      : std_logic;
+signal key_db         : std_logic_vector(1 downto 0);
+signal sw_db          : std_logic_vector(3 downto 0);
 
 -- signal that need to drive the HDcontroller
 type   t_a_std      is array ( integer range <> ) of std_logic;
 type   t_a_slv_24   is array ( integer range <> ) of std_logic_vector(23 downto 0);
 
-signal clk_out      : t_a_std(0 to 1);
-signal hs_out       : t_a_std(0 to 1);
-signal vs_out       : t_a_std(0 to 1);
-signal de_out       : t_a_std(0 to 1);
-signal rgb          : t_a_slv_24(0 to 1);
+signal clk_out      : std_logic;
+signal hs_out       : std_logic;
+signal vs_out       : std_logic;
+signal de_out       : std_logic;
+signal rgb          : std_logic_vector(23 downto 0);
 
 
 begin
@@ -256,6 +269,7 @@ end process p_bounce;
 --!
 --! implementation (0)
 --!
+gen_imp_0: if g_imp = 0 generate
 
   i_vgaHdmi: vgaHdmi
     port map(
@@ -267,31 +281,35 @@ end process p_bounce;
     switchG    => sw_db(2),
     switchB    => sw_db(3),
 
-    hsync      => hs_out(0),
-    vsync      => vs_out(0),
-    dataEnable => de_out(0),
-    vgaClock   => clk_out(0),
-    RGBchannel => rgb(0)
+    hsync      => hs_out,
+    vsync      => vs_out,
+    dataEnable => de_out,
+    vgaClock   => clk_out,
+    RGBchannel => rgb
   );
+  
+end generate;
 
 --!
 --! implementation (1)
 --!
 
+gen_imp_1: if g_imp = 1 generate
+
   i_timing_generator: entity work.timing_generator(rtl)
     generic map (
       RESOLUTION  => "SVGA",
-      GEN_PIX_LOC => false,
-      OBJECT_SIZE => 16
+      GEN_PIX_LOC => true,
+      OBJECT_SIZE => OBJECT_SIZE
       )
     port map (
       rst           => rst_pixel,
       clk           => clk_pixel,
-      hsync         => hs_out(1),
-      vsync         => vs_out(1),
+      hsync         => hs_out,
+      vsync         => vs_out,
       video_active  => video_active,
-      pixel_x       => open,
-      pixel_y       => open
+      pixel_x       => pixel_x,
+      pixel_y       => pixel_y
     );
 
   i_pattern_generator: entity work.pattern_generator(rtl)
@@ -299,18 +317,82 @@ end process p_bounce;
       rst           =>  rst_pixel,
       clk           =>  clk_pixel,
       video_active  =>  video_active,
-      rgb           =>  rgb(1)
+      rgb           =>  rgb
       );
 
+  de_out  <= video_active;
+  clk_out <= not clk_pll_40;
 
-      -- rgb(1)( 7 downto 0) <= ( others => '1');
-      -- rgb(1)(23 downto 8) <= ( others => '0');
-      de_out(1)  <= video_active;
-      clk_out(1) <= not clk_pll_40;
-
+end generate;
 
 --!
---! select between different implementations
+--! implementation (2)
+--!
+
+gen_imp_2: if g_imp = 2 generate
+
+  i_timing_generator: entity work.timing_generator(rtl)
+    generic map (
+      RESOLUTION  => "SVGA",
+      GEN_PIX_LOC => true,
+      OBJECT_SIZE => OBJECT_SIZE
+      )
+    port map (
+      rst           => rst_pixel,
+      clk           => clk_pixel,
+      hsync         => hs_out,
+      vsync         => vs_out,
+      video_active  => video_active,
+      pixel_x       => pixel_x,
+      pixel_y       => pixel_y
+    );
+    
+  --! video_ram instance
+  i_video_ram: entity work.video_ram(rtl)
+    generic map (
+      RESOLUTION  => "SVGA",
+      OBJECT_SIZE => OBJECT_SIZE,
+      PIXEL_SIZE  => PIXEL_SIZE,
+      ram_d => ram_d,
+      ram_x => ram_x,
+      ram_y => ram_y
+      )
+    port map (
+      rst=>rst_pixel,
+      pixclk=>clk_pixel,
+      video_active=>video_active,
+      pixel_x=>pixel_x,
+      pixel_y=>pixel_y,
+      ram_wr_ena=>ram_wr_ena,
+      ram_wr_dat=>ram_wr_dat,
+      ram_wr_add=>ram_wr_add,
+      rgb=>rgb
+      );
+
+  -- dummy data generator
+  process(rst_pixel, clk_pixel) is
+    variable v_cnt  : unsigned(PIXEL_SIZE-1 downto 0);
+  begin
+      if rst_pixel='1' then
+          ram_wr_add <= ( others => '0');
+          ram_wr_dat <= ( others => '0');
+          ram_wr_ena <= '1';
+          v_cnt      := ( others => '0');
+      elsif rising_edge(clk_pixel) then
+          v_cnt      := v_cnt + 1 ;
+          ram_wr_add <= std_logic_vector(v_cnt(ram_wr_add'range));
+          ram_wr_dat <= std_logic_vector(v_cnt(ram_wr_dat'range));
+          ram_wr_ena <= '1';
+      end if;
+  end process;
+
+  de_out  <= video_active;
+  clk_out <= not clk_pll_40;
+
+end generate;
+
+--!
+--! drive outputs
 --!
 
   p_driver: process (clk_pixel, rst_pixel_n)
@@ -321,10 +403,10 @@ end process p_bounce;
       HDMI_TX_VS                  <= '1';
       HDMI_TX_DE                  <= '0';
     elsif rising_edge(clk_pixel) then
-      HDMI_TX_D                   <= rgb(g_imp);
-      HDMI_TX_HS                  <= hs_out(g_imp);
-      HDMI_TX_VS                  <= vs_out(g_imp);
-      HDMI_TX_DE                  <= de_out(g_imp);
+      HDMI_TX_D                   <= rgb;
+      HDMI_TX_HS                  <= hs_out;
+      HDMI_TX_VS                  <= vs_out;
+      HDMI_TX_DE                  <= de_out;
     end if;
   end process p_driver;
 
