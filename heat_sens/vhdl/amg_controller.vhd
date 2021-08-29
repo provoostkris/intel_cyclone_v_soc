@@ -80,7 +80,8 @@ architecture rtl of amg_controller is
 
 --! RAW pixel values
   constant c_pixel_area : integer := 64;
-  type   t_a_slv_16     is array ( integer range <> ) of std_logic_vector(15 downto 0);
+  constant c_pixel_res  : integer := 16;
+  type   t_a_slv_16     is array ( integer range <> ) of std_logic_vector(c_pixel_res-1 downto 0);
   signal heat_values    : t_a_slv_16(0 to c_pixel_area-1);
   signal cnt_pix        : integer range 0 to c_pixel_area-1;
   
@@ -226,7 +227,7 @@ begin
       elsif rising_edge(clk) then
         v_cnt_addr := v_cnt_addr + 1 ;
         raw_wr_add <= std_logic_vector(v_cnt_addr);
-        raw_wr_dat <= heat_values(to_integer(v_cnt_addr))(12-1 downto 12-g_s_data);
+        raw_wr_dat <= heat_values(to_integer(v_cnt_addr))(c_pixel_res-1 downto c_pixel_res-g_s_data);
         raw_wr_ena <= '1';
       end if;
   end process;
