@@ -1,6 +1,6 @@
 ------------------------------------------------------------------------------
---  TOP level design file for AMG8833 controller <> Terrasic DE10 nano Cyclone 5 design
---  rev. 1.0 : 2020 Provoost Kris
+--  TOP level design file for AMG8833 heat sensor <> Terrasic DE10 nano Cyclone 5 design
+--  rev. 1.0 : 2021 Provoost Kris
 ------------------------------------------------------------------------------
 
 library ieee;

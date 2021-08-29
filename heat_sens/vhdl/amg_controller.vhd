@@ -1,6 +1,6 @@
 ------------------------------------------------------------------------------
---  design file for amg8833 controller <> terrasic de10 nano cyclone 5 design
---  rev. 1.0 : 2020 provoost kris
+--  design file for amg8833 controller
+--  rev. 1.0 : 2021 provoost kris
 ------------------------------------------------------------------------------
 
 library ieee;
