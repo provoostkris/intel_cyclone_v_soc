@@ -30,7 +30,11 @@ end interpolate;
 architecture rtl of interpolate is
 
     --! design constants
-    constant c_int_f        : natural := 2**g_int_f;
+    constant c_int_f        : natural := 2**g_int_f;          --! interpolation factor (integer)
+    constant c_grid_x       : natural := 2**(g_s_addr/2);     --! grid size X dimention (integer)
+    constant c_grid_y       : natural := 2**(g_s_addr/2);     --! grid size Y dimention (integer)
+    constant c_grid_a       : natural := c_grid_x * c_grid_y; --! grid size total dimention (integer)
+    
 
     -- input memory
     type t_raw_ram          is array ( integer range <> ) of std_logic_vector(g_s_data-1 downto 0);
@@ -43,18 +47,23 @@ architecture rtl of interpolate is
     signal int_x_mem        : t_ram ( 0 to 2**(g_s_addr+g_int_f)-1);
     signal int_x_wr_add     : unsigned(g_s_addr+g_int_f-1 downto 0);
     signal int_x_wr_ena     : std_logic_vector(c_int_f-1 downto 0);
-    signal int_x_rd_add     : unsigned(g_s_addr+g_int_f-1 downto 0);
+    signal int_x_rd_row     : unsigned(g_s_addr/2+g_int_f-1 downto 0);
+    signal int_x_rd_col     : unsigned(g_s_addr/2-1 downto 0);
+    signal int_x_rd_add     : integer range 0 to 2**(g_s_addr+g_int_f)-1;
     signal int_x_rd_ena     : unsigned(g_int_f-1 downto 0);
+    -- indicators for address zero crossing
+    signal int_x_rd_add_zero   : std_logic;
+    signal int_x_rd_add_zero_d : std_logic_vector(c_int_f-1 downto 0);
 
     -- 2nd stage memory
     signal int_y_mem        : t_ram ( 0 to 2**(g_s_addr+(2*g_int_f))-1);
     signal int_y_wr_add     : unsigned(g_s_addr+(2*g_int_f)-1 downto 0);
-    signal int_y_wr_ena     : std_logic_vector(c_int_f-1 downto 0);
+    signal int_y_wr_ena     : std_logic;
 
     -- 3rd stage memory
     signal grid_mem         : t_ram ( 0 to 2**(g_s_addr+(2*g_int_f))-1);
-    signal grid_rd_row      : unsigned(g_s_addr-1-1 downto 0);      -- half of addr range is rows
-    signal grid_rd_col      : unsigned(g_s_addr-1-1 downto 0);      -- half of addr range is colums
+    signal grid_rd_row      : unsigned(g_s_addr/2+g_int_f-1 downto 0);      
+    signal grid_rd_col      : unsigned(g_s_addr/2+g_int_f-1 downto 0);      
     signal grid_rd_add      : integer range 0 to 2**(g_s_addr+(2*g_int_f))-1;
     signal grid_wr_add      : unsigned(g_s_addr+(2*g_int_f)-1 downto 0);
     signal grid_wr_add_d    : integer range 0 to 2**(g_s_addr+(2*g_int_f))-1;
@@ -173,49 +182,45 @@ begin
 --! interpolation memory access vertical run
     --! get reference points
     process(reset_n, clk) is
-      variable v_off  : unsigned(2*g_int_f-1 downto 0);
     begin
         if reset_n='0' then
-          v_off         := ( others => '0');
-          int_x_rd_add  <= ( others => '0');
+          int_x_rd_row  <= ( others => '0');
+          int_x_rd_col  <= ( others => '0');
+          int_x_rd_add  <= 0;
           int_x_rd_ena  <= ( others => '0');
           ref_y_points  <= ( others => ( others => '0'));
         elsif rising_edge(clk) then
           -- note that in the first run all samples are incremental in the memory
           -- since we have a grid, we have to jump addresses to find two adjacent values
             int_x_rd_ena <= int_x_rd_ena + 1;
-            if and_reduce(std_logic_vector(int_x_rd_ena)) = '1'  then
-              if int_x_rd_add = 2**(int_x_rd_add'length)-1 then
-              -- set to zero when roll over
-                int_x_rd_add  <= ( others => '0');
-              else
-              -- increment the grid
-                if and_reduce(std_logic_vector(v_off)) = '1'  then
-                  int_x_rd_add  <= int_x_rd_add + c_int_f*g_s_addr + 1;
-                else
-                  int_x_rd_add  <= int_x_rd_add + c_int_f*g_s_addr + 0;
-                end if;
+            if and_reduce(std_logic_vector(int_x_rd_ena)) = '1' then
+              if and_reduce(std_logic_vector(int_x_rd_col)) = '1' then
+                int_x_rd_row <= int_x_rd_row + 1;
               end if;
+              int_x_rd_col  <= int_x_rd_col + 1;
             end if;
-            if and_reduce(std_logic_vector(int_x_rd_ena)) = '1'  then
-              v_off         := v_off + 1 ;
-            end if;
+            int_x_rd_add  <= to_integer(int_x_rd_col)*c_grid_x*c_int_f + to_integer(int_x_rd_row);
             -- assign the point values
-            ref_y_points(1) <= int_x_mem(to_integer(int_x_rd_add));
+            ref_y_points(1) <= int_x_mem(int_x_rd_add);
             ref_y_points(0) <= ref_y_points(1);
         end if;
     end process;
 
     --! determine the enable for the interpolation
     process(reset_n, clk) is
-      variable v_del  : std_logic;
     begin
         if reset_n='0' then
-          calc_y_ena  <= '0';
-          v_del       := '0';
+          calc_y_ena            <= '0';
+          int_x_rd_add_zero     <= '0';
+          int_x_rd_add_zero_d   <= ( others => '0');
         elsif rising_edge(clk) then
-          calc_y_ena  <= v_del;
-          v_del       := and_reduce(std_logic_vector(int_x_rd_ena));
+          calc_y_ena  <= and_reduce(std_logic_vector(int_x_rd_ena));
+          if and_reduce(std_logic_vector(int_x_rd_ena)) = '1' and int_x_rd_add = 0 then
+            int_x_rd_add_zero  <= '1';
+          else
+            int_x_rd_add_zero  <= '0';
+          end if;
+          int_x_rd_add_zero_d  <= int_x_rd_add_zero_d(int_x_rd_add_zero_d'high-1 downto 0) & int_x_rd_add_zero;
         end if;
     end process;
 
@@ -239,15 +244,19 @@ begin
     process(reset_n, clk) is
     begin
         if reset_n='0' then
-          int_y_wr_ena  <= ( others => '0');
+          int_y_wr_ena  <= '0';
           int_y_wr_add  <= ( others => '0');
         elsif rising_edge(clk) then
-            int_y_wr_ena  <= int_y_wr_ena(int_y_wr_ena'high-1 downto 0) & calc_y_ena;
+            int_y_wr_ena  <= calc_y_ena;
+            if int_x_rd_add_zero_d(int_x_rd_add_zero_d'high) = '1' then
+              int_y_wr_add  <= ( others => '0');
+            else
+              int_y_wr_add  <= int_y_wr_add + 1;
+            end if;
             -- carefull with the loop , for high int factors this could explode the design
             for i in 0 to c_int_f-1 loop
-              if int_y_wr_ena(i) = '1' then
-                int_y_wr_add  <= int_y_wr_add + 1;
-                int_y_mem(to_integer(int_y_wr_add)) <= std_logic_vector(to_unsigned(calc_y_value(i),g_s_data));
+              if int_y_wr_ena = '1' then
+                int_y_mem(to_integer(int_y_wr_add+i)) <= std_logic_vector(to_unsigned(calc_y_value(i),g_s_data));
               end if;
             end loop;
         end if;
@@ -279,9 +288,8 @@ begin
           end if;
           v_row         := to_integer(grid_rd_row);
           v_col         := to_integer(grid_rd_col);
-          grid_rd_add   <= v_row*g_s_addr*c_int_f + v_col;
-          grid_wr_add   <= grid_wr_add + 1 ;
-          grid_wr_add_d <= to_integer(grid_wr_add);
+          grid_rd_add   <= v_row*c_grid_x*c_int_f + v_col;
+          grid_wr_add_d <= v_row + v_col*c_grid_y*c_int_f;
           grid_wr_add_dd<= grid_wr_add_d;
           -- memory control
           grid_rd_dat              <= int_y_mem(grid_rd_add);

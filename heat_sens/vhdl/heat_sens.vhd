@@ -10,10 +10,12 @@ use     ieee.std_logic_misc.all;
 
 entity heat_sens is
   GENERIC(
-    g_s_addr    : natural :=  8;--! size of address
+    g_s_addr    : natural :=  6;--! size of address
     g_s_data    : natural :=  8;--! size of data
     g_int_f     : natural :=  1;--! interpolation factor ( in 2**n)
-    g_arr_init  : boolean := false
+    g_arr_init  : boolean := false;
+    input_clk   : integer := 25_000_000; --input clock speed from user logic in hz
+    bus_clk     : integer := 400_000     --speed the i2c bus (scl) will run at in hz
     );
   port (
     FPGA_CLK1_50      : in    std_ulogic; --! FPGA clock 1 input 50 MHz
@@ -23,7 +25,7 @@ entity heat_sens is
     KEY               : in    std_logic_vector(1 downto 0); --! Push button - debounced
     SW                : in    std_logic_vector(3 downto 0); --! Slide button
     Led               : out   std_logic_vector(7 downto 0); --! indicators
-    -- ADV7513
+    -- AMG8833
     AMG_I2C_SCL       : inout std_logic; -- i2c
     AMG_I2C_SDA       : inout std_logic; -- i2c
     -- memory interface with pixel values
@@ -137,8 +139,8 @@ i_pll : pll
 --!
 i_i2c_master: entity work.i2c_master
   generic map(
-    input_clk => 25_000_000,              --input clock speed from user logic in hz
-    bus_clk   => 400_000                  --speed the i2c bus (scl) will run at in hz
+    input_clk => input_clk,              --input clock speed from user logic in hz
+    bus_clk   => bus_clk                 --speed the i2c bus (scl) will run at in hz
     )
   port map(
     clk       => clk_pll_25      ,        --system clock
