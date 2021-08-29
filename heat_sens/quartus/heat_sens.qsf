@@ -99,15 +99,8 @@ set_location_assignment PIN_W21 -to SW[2]
 set_location_assignment PIN_W20 -to SW[3]
 
 
-set_global_assignment -name SDC_FILE ../constraints/heat_sens.sdc
-set_global_assignment -name VHDL_FILE ../vhdl/amg_controller.vhd
-set_global_assignment -name VHDL_FILE ../vhdl/i2c_master.vhd
-set_global_assignment -name VHDL_FILE ../vhdl/heat_sens.vhd
-set_global_assignment -name QIP_FILE ../vhdl/pll/pll.qip
-set_global_assignment -name SIP_FILE ../vhdl/pll/pll.sip
 set_global_assignment -name ENABLE_SIGNALTAP ON
 set_global_assignment -name USE_SIGNALTAP_FILE debugger.stp
-set_global_assignment -name SIGNALTAP_FILE debugger.stp
 set_global_assignment -name SLD_NODE_CREATOR_ID 110 -section_id ports
 set_global_assignment -name SLD_NODE_ENTITY_NAME sld_signaltap -section_id ports
 set_instance_assignment -name CONNECT_TO_SLD_NODE_ENTITY_PORT acq_clk -to "pll:i_pll|outclk_0" -section_id ports
@@ -3603,5 +3596,13 @@ set_instance_assignment -name POST_FIT_CONNECT_TO_SLD_NODE_ENTITY_PORT crc[26] -
 set_instance_assignment -name POST_FIT_CONNECT_TO_SLD_NODE_ENTITY_PORT crc[27] -to controller|vcc -section_id controller
 set_instance_assignment -name POST_FIT_CONNECT_TO_SLD_NODE_ENTITY_PORT crc[29] -to controller|vcc -section_id controller
 set_instance_assignment -name POST_FIT_CONNECT_TO_SLD_NODE_ENTITY_PORT crc[30] -to controller|vcc -section_id controller
+set_global_assignment -name VHDL_FILE ../vhdl/interpolate.vhd
+set_global_assignment -name SDC_FILE ../constraints/heat_sens.sdc
+set_global_assignment -name VHDL_FILE ../vhdl/amg_controller.vhd
+set_global_assignment -name VHDL_FILE ../vhdl/i2c_master.vhd
+set_global_assignment -name VHDL_FILE ../vhdl/heat_sens.vhd
+set_global_assignment -name QIP_FILE ../vhdl/pll/pll.qip
+set_global_assignment -name SIP_FILE ../vhdl/pll/pll.sip
+set_global_assignment -name SIGNALTAP_FILE debugger.stp
 set_global_assignment -name SLD_FILE db/debugger_auto_stripped.stp
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top

@@ -9,19 +9,24 @@ use     ieee.numeric_std.all;
 
 entity amg_controller is
   GENERIC(
-    g_arr_init : boolean := false
+    g_s_addr    : natural :=  8;--! size of address
+    g_s_data    : natural :=  8;--! size of data
+    g_arr_init  : boolean := false
     );
   port(
-    clk       : in      std_logic;                    --system clock
-    reset_n   : in      std_logic;                    --active low reset
-    ena       : out     std_logic;                    --latch in command
-    addr      : out     std_logic_vector(6 downto 0); --address of target slave
-    rw        : out     std_logic;                    --'0' is write, '1' is read
-    data_wr   : out     std_logic_vector(7 downto 0); --data to write to slave
-    busy      : in      std_logic;                    --indicates transaction in progress
-    data_rd   : in      std_logic_vector(7 downto 0); --data read from slave
-    ack_error : in      std_logic;                    --flag if improper acknowledge from slave
-    mean      : out     std_logic_vector(15 downto 0) --the average of all values
+    clk         : in   std_logic;                    --system clock
+    reset_n     : in   std_logic;                    --active low reset
+    ena         : out  std_logic;                    --latch in command
+    addr        : out  std_logic_vector(6 downto 0); --address of target slave
+    rw          : out  std_logic;                    --'0' is write, '1' is read
+    data_wr     : out  std_logic_vector(7 downto 0); --data to write to slave
+    busy        : in   std_logic;                    --indicates transaction in progress
+    data_rd     : in   std_logic_vector(7 downto 0); --data read from slave
+    ack_error   : in   std_logic;                    --flag if improper acknowledge from slave
+    -- memory interface with values
+    raw_wr_ena  : out  std_logic;
+    raw_wr_add  : out  std_logic_vector(g_s_addr-1 downto 0);
+    raw_wr_dat  : out  std_logic_vector(g_s_data-1 downto 0)
   );
 end amg_controller;
 
@@ -78,9 +83,7 @@ architecture rtl of amg_controller is
   type   t_a_slv_16     is array ( integer range <> ) of std_logic_vector(15 downto 0);
   signal heat_values    : t_a_slv_16(0 to c_pixel_area-1);
   signal cnt_pix        : integer range 0 to c_pixel_area-1;
---! sidebind information
-  signal calc_mean_ena  : std_logic;
-  signal mean_values    : unsigned(31 downto 0);
+  
 
 begin
 
@@ -109,7 +112,6 @@ begin
       if g_arr_init = true then
         heat_values    <= ( others => ( others => '0'));
       end if;
-      calc_mean_ena  <= '0';
       v_pixel_addr   := ( others => '0');
     elsif(clk'event and clk = '1') then
 
@@ -118,7 +120,6 @@ begin
 
         case state is
           when idle =>
-            calc_mean_ena <= '0';
             -- state control
             if busy = '0' then
               state   <=  amg_reset;
@@ -204,7 +205,6 @@ begin
               state   <=  amg_read_done;
             end if;
           when amg_read_done =>
-            calc_mean_ena <= '1';
             -- state control
             state   <=  idle;
 
@@ -214,24 +214,22 @@ begin
       end if;
   end process;
   
-  -- perfrom a contineous averaging of the heat_values
-  -- to get a mean temperature
-  -- for now just take MSBs of the value
-  process(clk, reset_n)
+  -- push the heat values on a memory interface 
+  process(clk,reset_n) is
+    variable v_cnt_addr  : unsigned(raw_wr_add'range);
   begin
-    if(reset_n = '0') then
-      mean_values   <= ( others => '0');
-      mean          <= ( others => '0');
-    elsif(clk'event and clk = '1') then
-    if state = idle then
-      mean_values   <= ( others => '0');
-    elsif state = amg_process_area then
-      mean_values   <= mean_values  + unsigned(heat_values(cnt_pix));
-    end if;
-    if calc_mean_ena = '1' then
-      mean  <= std_logic_vector(mean_values(31 downto 16));
-    end if;  
-    end if;
+      if reset_n = '0' then
+        raw_wr_add <= ( others => '0');
+        raw_wr_dat <= ( others => '0');
+        raw_wr_ena <= '0';
+        v_cnt_addr := ( others => '0');
+      elsif rising_edge(clk) then
+        v_cnt_addr := v_cnt_addr + 1 ;
+        raw_wr_add <= std_logic_vector(v_cnt_addr);
+        raw_wr_dat <= heat_values(to_integer(v_cnt_addr))(12-1 downto 12-g_s_data);
+        raw_wr_ena <= '1';
+      end if;
   end process;
+
   
 end rtl;

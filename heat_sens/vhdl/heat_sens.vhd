@@ -9,6 +9,12 @@ use     ieee.numeric_std.all;
 use     ieee.std_logic_misc.all;
 
 entity heat_sens is
+  GENERIC(
+    g_s_addr    : natural :=  8;--! size of address
+    g_s_data    : natural :=  8;--! size of data
+    g_int_f     : natural :=  1;--! interpolation factor ( in 2**n)
+    g_arr_init  : boolean := false
+    );
   port (
     FPGA_CLK1_50      : in    std_ulogic; --! FPGA clock 1 input 50 MHz
     FPGA_CLK2_50      : in    std_ulogic; --! FPGA clock 2 input 50 MHz
@@ -19,7 +25,11 @@ entity heat_sens is
     Led               : out   std_logic_vector(7 downto 0); --! indicators
     -- ADV7513
     AMG_I2C_SCL       : inout std_logic; -- i2c
-    AMG_I2C_SDA       : inout std_logic  -- i2c
+    AMG_I2C_SDA       : inout std_logic; -- i2c
+    -- memory interface with pixel values
+    int_rd_ena        : in    std_logic;
+    int_rd_add        : in    std_logic_vector(g_s_addr+(2*g_int_f)-1 downto 0);
+    int_rd_dat        : out   std_logic_vector(g_s_data-1 downto 0)
   );
 end;
 
@@ -58,7 +68,10 @@ signal data_wr        : std_logic_vector(7 downto 0); --data to write to slave
 signal busy           : std_logic;                    --indicates transaction in progress
 signal data_rd        : std_logic_vector(7 downto 0); --data read from slave
 signal ack_error      : std_logic;                    --flag if improper acknowledge from slave
-signal mean           : std_logic_vector(15 downto 0);--the average of all values
+
+signal raw_wr_ena    : std_logic;
+signal raw_wr_add    : std_logic_vector(g_s_addr-1 downto 0);
+signal raw_wr_dat    : std_logic_vector(g_s_data-1 downto 0);
 
 begin
 
@@ -68,8 +81,8 @@ led(2)                  <= or_reduce(SW);
 led(3)                  <= pll_locked;
 led(4)                  <= busy;
 led(5)                  <= ack_error;
-led(6)                  <= mean(mean'low);
-led(7)                  <= mean(mean'high);
+led(6)                  <= '0';
+led(7)                  <= '1';
 
 --! syncronous resets
 p_rst_pll_25: process (clk_pll_25, pll_locked)
@@ -145,20 +158,46 @@ i_i2c_master: entity work.i2c_master
 --! adding the i2c controller
 --!
 i_amg_controller: entity work.amg_controller
+  generic map(
+    g_s_addr    => g_s_addr ,
+    g_s_data    => g_s_data ,
+    g_arr_init  => g_arr_init
+  )
   port map(
-    clk       => clk_pll_25      ,        --system clock
-    reset_n   => rst_pll_25_n    ,        --active low reset
-    ena       => ena             ,        --latch in command
-    addr      => addr            ,        --address of target slave
-    rw        => rw              ,        --'0' is write, '1' is read
-    data_wr   => data_wr         ,        --data to write to slave
-    busy      => busy            ,        --indicates transaction in progress
-    data_rd   => data_rd         ,        --data read from slave
-    ack_error => ack_error       ,        --flag if improper acknowledge from slave
-    mean      => mean                     --the average of all values
+    clk           => clk_pll_25      ,        --system clock
+    reset_n       => rst_pll_25_n    ,        --active low reset
+    ena           => ena             ,        --latch in command
+    addr          => addr            ,        --address of target slave
+    rw            => rw              ,        --'0' is write, '1' is read
+    data_wr       => data_wr         ,        --data to write to slave
+    busy          => busy            ,        --indicates transaction in progress
+    data_rd       => data_rd         ,        --data read from slave
+    ack_error     => ack_error       ,        --flag if improper acknowledge from slave
+    raw_wr_ena    => raw_wr_ena      ,
+    raw_wr_add    => raw_wr_add      ,
+    raw_wr_dat    => raw_wr_dat
     );
 
 
+--!
+--! interpolate the sensor values 
+--!
+i_interpolate: entity work.interpolate(rtl)
+  generic map(
+    g_s_addr => g_s_addr ,
+    g_s_data => g_s_data ,
+    g_int_f  => g_int_f
+  )
+  port map(
+    clk           =>  clk_pll_25    ,
+    reset_n       =>  rst_pll_25_n  ,
+    raw_wr_ena    =>  raw_wr_ena    ,
+    raw_wr_add    =>  raw_wr_add    ,
+    raw_wr_dat    =>  raw_wr_dat    ,
+    int_rd_ena    =>  int_rd_ena    ,
+    int_rd_add    =>  int_rd_add    ,
+    int_rd_dat    =>  int_rd_dat
+  );
 
 --! just blink LED to see activity
 p_led: process (clk_pll_25, rst_pll_25)
