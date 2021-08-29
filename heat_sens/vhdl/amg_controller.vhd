@@ -227,7 +227,7 @@ begin
       elsif rising_edge(clk) then
         v_cnt_addr := v_cnt_addr + 1 ;
         raw_wr_add <= std_logic_vector(v_cnt_addr);
-        raw_wr_dat <= heat_values(to_integer(v_cnt_addr))(c_pixel_res-1 downto c_pixel_res-g_s_data);
+        raw_wr_dat <= heat_values(to_integer(v_cnt_addr))(g_s_data-1 downto 0);
         raw_wr_ena <= '1';
       end if;
   end process;
