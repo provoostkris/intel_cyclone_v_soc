@@ -15,3 +15,6 @@ to produce a screen output for a HDMI capable monitor.
 A driver and controller for the 
 [AMG8833](https://industry.panasonic.eu/components/sensors/industrial-sensors/grid-eye/amg88xx-high-performance-type/amg8833-amg8833)
 module. Supporting component initialisation, read out and averaging.
+
+### [Thermal camera](/heat_cam)
+A very low resolution budget thermal camera can be made by combining the two projects [Thermal imager](/heat_sens) and [HDMI](/hdmi)
