@@ -117,7 +117,7 @@ alias rst_pixel_n : std_logic is rst_pll_40_n;
 -- local signals
 constant OBJECT_SIZE  : natural := 16;
 constant PIXEL_SIZE   : natural := 24;
-constant ram_d        : natural := 3*3;
+constant ram_d        : natural := 8*3;
 constant ram_x        : natural := 8;
 constant ram_y        : natural := 8;
 
@@ -371,7 +371,7 @@ gen_imp_2: if g_imp = 2 generate
 
   -- dummy data generator
   process(rst_pixel, clk_pixel) is
-    variable v_cnt  : unsigned(PIXEL_SIZE-1 downto 0);
+    variable v_cnt  : unsigned(PIXEL_SIZE downto 0);
   begin
       if rst_pixel='1' then
           ram_wr_add <= ( others => '0');
