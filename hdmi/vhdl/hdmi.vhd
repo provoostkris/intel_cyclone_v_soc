@@ -363,6 +363,7 @@ gen_imp_2: if g_imp = 2 generate
       video_active=>video_active,
       pixel_x=>pixel_x,
       pixel_y=>pixel_y,
+      ram_wr_clk=>clk_pixel,
       ram_wr_ena=>ram_wr_ena,
       ram_wr_dat=>ram_wr_dat,
       ram_wr_add=>ram_wr_add,
