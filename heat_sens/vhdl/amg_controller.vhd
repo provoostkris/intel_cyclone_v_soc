@@ -68,6 +68,7 @@ architecture rtl of amg_controller is
                   amg_frame_rate,
                   amg_frame_rate_val,
                   amg_wake_up,
+                  amg_pwr_ctrl,
                   amg_read_pixels_addr,
                   amg_read_pixels_low,
                   amg_read_pixels_high,
@@ -144,7 +145,6 @@ begin
           when amg_frame_rate =>
             rw        <= '0';
             data_wr   <= c_amg_register_fpsc;
-                        --c_amg_fpsc_framerate_1
             ena       <= not busy_shift(busy_shift'high) ;
             -- state control
             if busy_shift = c_busy_is_over then
@@ -152,13 +152,21 @@ begin
             end if;
           when amg_frame_rate_val =>
             rw        <= '0';
-            data_wr   <= c_amg_fpsc_framerate_1;
+            data_wr   <= c_amg_fpsc_framerate_10;
             ena       <= not busy_shift(busy_shift'high) ;
             -- state control
             if busy_shift = c_busy_is_over then
               state   <=  amg_wake_up;
             end if;
           when amg_wake_up =>
+            rw        <= '0';
+            data_wr   <= c_amg_register_pctl;
+            ena       <= not busy_shift(busy_shift'high) ;
+            -- state control
+            if busy_shift = c_busy_is_over then
+              state   <=  amg_pwr_ctrl;
+            end if;
+          when amg_pwr_ctrl =>
             rw        <= '0';
             data_wr   <= c_amg_pctl_normal;
             ena       <= not busy_shift(busy_shift'high) ;
