@@ -11,6 +11,8 @@ create_clock -name fpga_clk_3  -period 20    [get_ports FPGA_CLK3_50]
 create_clock -name adv_i2c_clk -period 50000 [get_ports HDMI_I2C_SCL]
 create_clock -name amg_i2c_clk -period 25000 [get_ports AMG_I2C_SCL]
 
+create_clock -name i2c_clk_src -period 50000 [get_keepers *mI2C_CTRL_CLK]
+
 # set false paths from user I/O
 set_false_path -from [get_ports { KEY[0] KEY[1] } ]           -to [get_registers *]
 set_false_path -from [get_ports { SW[0] SW[1] SW[2] SW[3] } ] -to [get_registers *]
@@ -24,8 +26,8 @@ derive_clock_uncertainty
 set_input_delay  -clock [get_clocks {amg_i2c_clk}] 10 [get_ports {AMG_I2C_SDA}]
 set_output_delay -clock [get_clocks {amg_i2c_clk}] 10 [get_ports {AMG_I2C_SDA}]
 
-set_input_delay  -clock [get_clocks {adv_i2c_scl}] 10 [get_ports {hdmi_i2c_sda}]
-set_output_delay -clock [get_clocks {adv_i2c_scl}] 10 [get_ports {hdmi_i2c_sda}]
+set_input_delay  -clock [get_clocks {adv_i2c_clk}] 10 [get_ports {hdmi_i2c_sda}]
+set_output_delay -clock [get_clocks {adv_i2c_clk}] 10 [get_ports {hdmi_i2c_sda}]
 
 # Video IO
 set hdmi_pll_out  [get_pins {i_pll|pll_inst|altera_pll_i|outclk_wire[1]~CLKENA0|outclk}]
