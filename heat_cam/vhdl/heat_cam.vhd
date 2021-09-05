@@ -10,13 +10,13 @@ use     ieee.std_logic_misc.all;
 
 entity heat_cam is
   generic (
+    g_tst_mode  : boolean := false ;
     g_s_addr    : natural :=  6;--! size of address
-    g_s_data    : natural :=  8;--! size of data
-    g_int_f     : natural :=  1;--! interpolation factor ( in 2**n)
+    g_s_data    : natural := 16;--! size of data
+    g_int_f     : natural :=  4;--! interpolation factor ( in 2**n)
     g_arr_init  : boolean := false;
     input_clk   : integer := 25_000_000; --input clock speed from user logic in hz
-    bus_clk     : integer := 400_000;    --speed the i2c bus (scl) will run at in hz
-    g_imp       : natural range 0 to 2 := 2
+    bus_clk     : integer := 400_000     --speed the i2c bus (scl) will run at in hz
   );
   port (
     FPGA_CLK1_50      : in    std_ulogic; --! FPGA clock 1 input 50 MHz
@@ -72,6 +72,23 @@ component pll is
   );
 end component pll;
 
+type     t_dummy_ram is array ( 0 to 63 ) of integer range 0 to 255 ;
+constant c_dummy_ram : t_dummy_ram :=
+  (
+     64,128, 128,128, 128,128, 128,  0,
+    128,128, 128,128, 128,128, 128,128,
+
+    128,128, 255,128, 128,255, 128,128,
+    128,128, 128,128, 128,128, 128,128,
+
+    128,128, 128,128, 128,128, 128,128,
+    128,128, 255,128, 128,255, 128,128,
+
+    128,128, 128,128, 128,128, 128,128,
+    0  ,128, 128,128, 128,128, 128, 64
+  );
+
+
 signal rst_pll_25     : std_logic;
 signal rst_pll_25_n   : std_logic;
 signal rst_pll_40     : std_logic;
@@ -108,8 +125,8 @@ signal int_rd_dat    : std_logic_vector(g_s_data-1 downto 0);
 
 -- local signals HDMI controller
 constant OBJECT_SIZE  : natural := 16;
-constant PIXEL_SIZE   : natural := 24;
-constant ram_d        : natural := 3*3;
+constant c_pixel_size : natural := 24;    -- bit size for one pixel color (in RGB)  
+constant ram_d        : natural := 3*8;   -- in multiples of 3 ( N  bits for each color)
 constant ram_x        : natural := g_s_addr/2+g_int_f;
 constant ram_y        : natural := g_s_addr/2+g_int_f;
 
@@ -132,6 +149,13 @@ signal rgb          : std_logic_vector(23 downto 0);
 begin
 
 --! top level assigments
+led(1)                  <= i2c_rdy;
+led(2)                  <= i2c_hold;
+led(3)                  <= clk_pll_40;
+led(4)                  <= SW(0);
+led(5)                  <= SW(1);
+led(6)                  <= SW(2);
+led(7)                  <= SW(3);
 
 --! syncronous resets
 p_rst_pll_25: process (clk_pll_25, pll_locked)
@@ -181,57 +205,84 @@ i_pll : pll
     locked   => pll_locked
   );
 
---!
---! adding the i2c master
---!
-i_i2c_master: entity work.i2c_master
-  generic map(
-    input_clk => input_clk,              --input clock speed from user logic in hz
-    bus_clk   => bus_clk                 --speed the i2c bus (scl) will run at in hz
+
+gen_live_mode: if g_tst_mode = false generate
+
+  --!
+  --! adding the i2c master
+  --!
+  i_i2c_master: entity work.i2c_master
+    generic map(
+      input_clk => input_clk,              --input clock speed from user logic in hz
+      bus_clk   => bus_clk                 --speed the i2c bus (scl) will run at in hz
+      )
+    port map(
+      clk       => clk_pll_25      ,        --system clock
+      reset_n   => rst_pll_25_n    ,        --active low reset
+      ena       => ena             ,        --latch in command
+      addr      => addr            ,        --address of target slave
+      rw        => rw              ,        --'0' is write, '1' is read
+      data_wr   => data_wr         ,        --data to write to slave
+      busy      => busy            ,        --indicates transaction in progress
+      data_rd   => data_rd         ,        --data read from slave
+      ack_error => ack_error       ,        --flag if improper acknowledge from slave
+      sda       => AMG_I2C_SDA     ,        --serial data output of i2c bus
+      scl       => AMG_I2C_SCL              --serial clock output of i2c bus
+      );
+
+  --!
+  --! adding the i2c controller
+  --!
+  i_amg_controller: entity work.amg_controller
+    generic map(
+      g_s_addr    => g_s_addr ,
+      g_s_data    => g_s_data ,
+      g_arr_init  => g_arr_init
     )
-  port map(
-    clk       => clk_pll_25      ,        --system clock
-    reset_n   => rst_pll_25_n    ,        --active low reset
-    ena       => ena             ,        --latch in command
-    addr      => addr            ,        --address of target slave
-    rw        => rw              ,        --'0' is write, '1' is read
-    data_wr   => data_wr         ,        --data to write to slave
-    busy      => busy            ,        --indicates transaction in progress
-    data_rd   => data_rd         ,        --data read from slave
-    ack_error => ack_error       ,        --flag if improper acknowledge from slave
-    sda       => AMG_I2C_SDA     ,        --serial data output of i2c bus
-    scl       => AMG_I2C_SCL              --serial clock output of i2c bus
-    );
+    port map(
+      clk           => clk_pll_25      ,        --system clock
+      reset_n       => rst_pll_25_n    ,        --active low reset
+      swap_byte     => SW(1)           ,        --swap pixel bytes
+      ena           => ena             ,        --latch in command
+      addr          => addr            ,        --address of target slave
+      rw            => rw              ,        --'0' is write, '1' is read
+      data_wr       => data_wr         ,        --data to write to slave
+      busy          => busy            ,        --indicates transaction in progress
+      data_rd       => data_rd         ,        --data read from slave
+      ack_error     => ack_error       ,        --flag if improper acknowledge from slave
+      raw_wr_ena    => raw_wr_ena      ,
+      raw_wr_add    => raw_wr_add      ,
+      raw_wr_dat    => raw_wr_dat
+      );
 
---!
---! adding the i2c controller
---!
-i_amg_controller: entity work.amg_controller
-  generic map(
-    g_s_addr    => g_s_addr ,
-    g_s_data    => g_s_data ,
-    g_arr_init  => g_arr_init
-  )
-  port map(
-    clk           => clk_pll_25      ,        --system clock
-    reset_n       => rst_pll_25_n    ,        --active low reset
-    ena           => ena             ,        --latch in command
-    addr          => addr            ,        --address of target slave
-    rw            => rw              ,        --'0' is write, '1' is read
-    data_wr       => data_wr         ,        --data to write to slave
-    busy          => busy            ,        --indicates transaction in progress
-    data_rd       => data_rd         ,        --data read from slave
-    ack_error     => ack_error       ,        --flag if improper acknowledge from slave
-    raw_wr_ena    => raw_wr_ena      ,
-    raw_wr_add    => raw_wr_add      ,
-    raw_wr_dat    => raw_wr_dat
-    );
+end generate gen_live_mode;
 
+
+gen_test_mode: if g_tst_mode = true generate
+  -- or generate some data pattern from a 8x8 ROM
+  -- note this only works for 8x8 raw configuration for test purpose
+  process(rst_pixel, clk_pixel) is
+    variable v_cnt  : unsigned(g_s_addr-1 downto 0);
+  begin
+      if rst_pll_25_n='0' then
+          raw_wr_add <= ( others => '0');
+          raw_wr_dat <= ( others => '0');
+          raw_wr_ena <= '0';
+          v_cnt      := ( others => '0');
+      elsif rising_edge(clk_pll_25) then-- send pixel rom to video ram
+          raw_wr_add <= std_logic_vector(v_cnt);
+          raw_wr_dat <= std_logic_vector(to_unsigned(c_dummy_ram(to_integer(v_cnt)),g_s_data));
+          raw_wr_ena <= '1';
+          -- go to next pixel
+          v_cnt      := v_cnt + 1 ;
+      end if;
+  end process;
+end generate gen_test_mode;
 
 --!
 --! interpolate the sensor values
 --!
-i_interpolate: entity work.interpolate(rtl)
+i_interpolate: entity work.interpolate_ram(rtl)
   generic map(
     g_s_addr => g_s_addr ,
     g_s_data => g_s_data ,
@@ -248,6 +299,29 @@ i_interpolate: entity work.interpolate(rtl)
     int_rd_dat    =>  int_rd_dat
   );
 
+  -- transfer data from interpolator to HDMI controller
+  process(rst_pll_25_n, clk_pll_25) is
+    variable v_cnt  : unsigned(g_s_addr+(2*g_int_f)-1 downto 0);
+  begin
+      if rst_pll_25_n='0' then
+          int_rd_add <= ( others => '0');
+          int_rd_ena <= '0';
+          ram_wr_add <= ( others => '0');
+          ram_wr_dat <= ( others => '0');
+          v_cnt      := ( others => '0');
+      elsif rising_edge(clk_pll_25) then
+          v_cnt      := v_cnt + 1 ;
+          int_rd_add <= std_logic_vector(v_cnt(int_rd_add'range));
+          int_rd_ena <= '1';
+          -- send pixel data to video ram
+          ram_wr_add <= int_rd_add;
+          ram_wr_ena <= int_rd_ena;
+          -- for now just map the data
+          -- later a mapping to the R-G-B values must happen
+          ram_wr_dat(int_rd_dat'range) <= int_rd_dat;
+      end if;
+  end process;
+  
 --!
 --! generate video timing
 --!
@@ -274,7 +348,7 @@ i_interpolate: entity work.interpolate(rtl)
     generic map (
       RESOLUTION  => "SVGA",
       OBJECT_SIZE => OBJECT_SIZE,
-      PIXEL_SIZE  => PIXEL_SIZE,
+      PIXEL_SIZE  => c_pixel_size,
       ram_d       => ram_d,
       ram_x       => ram_x,
       ram_y       => ram_y
@@ -285,34 +359,12 @@ i_interpolate: entity work.interpolate(rtl)
       video_active=>video_active,
       pixel_x     =>pixel_x,
       pixel_y     =>pixel_y,
+      ram_wr_clk  =>clk_pll_25,
       ram_wr_ena  =>ram_wr_ena,
       ram_wr_dat  =>ram_wr_dat,
       ram_wr_add  =>ram_wr_add,
       rgb         =>rgb
       );
-
-  -- dummy data generator
-  process(rst_pixel, clk_pixel) is
-    variable v_cnt  : unsigned(g_s_addr+(2*g_int_f)-1 downto 0);
-  begin
-      if rst_pixel='1' then
-          int_rd_add <= ( others => '0');
-          int_rd_ena <= '0';
-          ram_wr_add <= ( others => '0');
-          ram_wr_dat <= ( others => '0');
-          v_cnt      := ( others => '0');
-      elsif rising_edge(clk_pixel) then
-          v_cnt      := v_cnt + 1 ;
-          int_rd_add <= std_logic_vector(v_cnt(int_rd_add'range));
-          int_rd_ena <= '1';
-          -- send pixel data to video ram
-          ram_wr_add <= int_rd_add;
-          ram_wr_ena <= int_rd_ena;
-          -- for now just map the data
-          -- later a mapping to the R-G-B values must happen
-          ram_wr_dat(int_rd_dat'range) <= int_rd_dat;
-      end if;
-  end process;
 
   de_out  <= video_active;
 
