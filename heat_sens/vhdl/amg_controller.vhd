@@ -9,13 +9,14 @@ use     ieee.numeric_std.all;
 
 entity amg_controller is
   GENERIC(
-    g_s_addr    : natural :=  8;--! size of address
-    g_s_data    : natural :=  8;--! size of data
+    g_s_addr    : natural range 4 to 16 :=  8;--! per 64 pixels the data will be replicated
+    g_s_data    : natural range 8 to 16 :=  8;--! size of data
     g_arr_init  : boolean := false
     );
   port(
     clk         : in   std_logic;                    --system clock
     reset_n     : in   std_logic;                    --active low reset
+    swap_byte   : in   std_logic;                    --swap pixel bytes
     ena         : out  std_logic;                    --latch in command
     addr        : out  std_logic_vector(6 downto 0); --address of target slave
     rw          : out  std_logic;                    --'0' is write, '1' is read
@@ -56,7 +57,8 @@ architecture rtl of amg_controller is
   constant c_amg_pctl_standby60   : std_logic_vector(7 downto 0) := x"20"; --! stand-by (60 sec intermittence)
   --! reset register values
   constant c_amg_rst_flagreset    : std_logic_vector(7 downto 0) := x"30"; --! flag reset
-  constant c_amg_rst_initialreset : std_logic_vector(7 downto 0) := x"30"; --! flag reset
+  -- constant c_amg_rst_initialreset : std_logic_vector(7 downto 0) := x"30"; --! flag reset
+  constant c_amg_rst_initialreset : std_logic_vector(7 downto 0) := x"3F"; --! flag reset
   --! frame rate control register values
   constant c_amg_fpsc_framerate_10: std_logic_vector(7 downto 0) := x"00"; --! 10 fps measurement
   constant c_amg_fpsc_framerate_1 : std_logic_vector(7 downto 0) := x"01"; --!  1 fps measurement
@@ -69,8 +71,10 @@ architecture rtl of amg_controller is
                   amg_frame_rate_val,
                   amg_wake_up,
                   amg_pwr_ctrl,
-                  amg_read_pixels_addr,
+                  wait_before_read,
+                  amg_read_pixels_addr_low,
                   amg_read_pixels_low,
+                  amg_read_pixels_addr_high,
                   amg_read_pixels_high,
                   amg_process_area,
                   amg_read_done
@@ -78,14 +82,15 @@ architecture rtl of amg_controller is
 
   signal state         : t_state;                        --state machine
   signal busy_shift    : std_logic_vector(3 downto 0);   --shift register with busy port
-
+  signal proceed       : std_logic;
+  
 --! RAW pixel values
   constant c_pixel_area : integer := 64;
   constant c_pixel_res  : integer := 16;
   type   t_a_slv_16     is array ( integer range <> ) of std_logic_vector(c_pixel_res-1 downto 0);
   signal heat_values    : t_a_slv_16(0 to c_pixel_area-1);
   signal cnt_pix        : integer range 0 to c_pixel_area-1;
-  
+
 
 begin
 
@@ -99,6 +104,24 @@ begin
       busy_shift  <= busy_shift(busy_shift'high-1 downto 0) & busy;
     end if;
   end process;
+  
+  -- create some delay to have to sensor booted properly
+  process(clk, reset_n)
+    variable v_cnt : unsigned(20 downto 0);
+  begin
+    if(reset_n = '0') then
+      proceed  <= '0';
+      v_cnt    := ( others => '0');
+    elsif(clk'event and clk = '1') then
+      if state = wait_before_read then
+        v_cnt    := v_cnt + 1;
+      else
+        v_cnt    := ( others => '0');
+      end if;
+      proceed  <= v_cnt(v_cnt'high);
+    end if;
+  end process;
+
 
   --state machine control
   process(clk, reset_n)
@@ -124,6 +147,22 @@ begin
           when idle =>
             -- state control
             if busy = '0' then
+              state   <=  amg_wake_up;
+            end if;
+          when amg_wake_up =>
+            rw        <= '0';
+            data_wr   <= c_amg_register_pctl;
+            ena       <= not busy_shift(busy_shift'high) ;
+            -- state control
+            if busy_shift = c_busy_is_over then
+              state   <=  amg_pwr_ctrl;
+            end if;
+          when amg_pwr_ctrl =>
+            rw        <= '0';
+            data_wr   <= c_amg_pctl_normal;
+            ena       <= not busy_shift(busy_shift'high) ;
+            -- state control
+            if busy_shift = c_busy_is_over then
               state   <=  amg_reset;
             end if;
           when amg_reset =>
@@ -152,29 +191,17 @@ begin
             end if;
           when amg_frame_rate_val =>
             rw        <= '0';
-            data_wr   <= c_amg_fpsc_framerate_10;
+            data_wr   <= c_amg_fpsc_framerate_1;
             ena       <= not busy_shift(busy_shift'high) ;
             -- state control
             if busy_shift = c_busy_is_over then
-              state   <=  amg_wake_up;
+              state   <=  wait_before_read;
             end if;
-          when amg_wake_up =>
-            rw        <= '0';
-            data_wr   <= c_amg_register_pctl;
-            ena       <= not busy_shift(busy_shift'high) ;
-            -- state control
-            if busy_shift = c_busy_is_over then
-              state   <=  amg_pwr_ctrl;
+          when wait_before_read =>
+            if proceed = '1' then
+              state   <=  amg_read_pixels_addr_low;
             end if;
-          when amg_pwr_ctrl =>
-            rw        <= '0';
-            data_wr   <= c_amg_pctl_normal;
-            ena       <= not busy_shift(busy_shift'high) ;
-            -- state control
-            if busy_shift = c_busy_is_over then
-              state   <=  amg_read_pixels_addr;
-            end if;
-          when amg_read_pixels_addr =>
+          when amg_read_pixels_addr_low =>
             -- for this step set the pixel of interest address
             v_pixel_addr  := unsigned(c_amg_register_t01l) + to_unsigned((2*cnt_pix),8);
             -- control
@@ -194,7 +221,12 @@ begin
               state   <=  amg_read_pixels_high;
             end if;
             -- store the heat value
-            heat_values(cnt_pix)( 7 downto 0) <= data_rd;
+            case swap_byte is
+              when '0' =>
+                heat_values(cnt_pix)( 7 downto 0) <= data_rd;
+              when others =>
+                heat_values(cnt_pix)(15 downto 8) <= data_rd;
+            end case;
           when amg_read_pixels_high =>
             rw        <= '1';
             data_wr   <= ( others => '0');
@@ -204,41 +236,55 @@ begin
               state   <=  amg_process_area;
             end if;
             -- store the heat value
-            heat_values(cnt_pix)(15 downto 8) <= data_rd;
+            case swap_byte is
+              when '1' =>
+                heat_values(cnt_pix)( 7 downto 0) <= data_rd;
+              when others =>
+                heat_values(cnt_pix)(15 downto 8) <= data_rd;
+            end case;
           when amg_process_area =>
-            if cnt_pix < c_pixel_area-1 then 
+            if cnt_pix < c_pixel_area-1 then
               cnt_pix <=  cnt_pix + 1;
-              state   <=  amg_read_pixels_addr;
+              state   <=  amg_read_pixels_addr_low;
             else
               cnt_pix <= 0;
               state   <=  amg_read_done;
             end if;
           when amg_read_done =>
             -- state control
-            state   <=  idle;
+            state   <=  amg_read_pixels_addr_low;
 
           when others =>
               state   <=  idle;
         end case;
       end if;
   end process;
-  
-  -- push the heat values on a memory interface 
+
+  -- push the heat values on a memory interface
   process(clk,reset_n) is
-    variable v_cnt_addr  : unsigned(raw_wr_add'range);
+    variable v_cnt_addr    : unsigned(raw_wr_add'range);
+    variable v_temperature : unsigned(c_pixel_res-1 downto 0);
   begin
       if reset_n = '0' then
-        raw_wr_add <= ( others => '0');
-        raw_wr_dat <= ( others => '0');
-        raw_wr_ena <= '0';
-        v_cnt_addr := ( others => '0');
+        raw_wr_add    <= ( others => '0');
+        raw_wr_dat    <= ( others => '0');
+        raw_wr_ena    <= '0';
+        v_cnt_addr    := ( others => '0');
+        v_temperature := ( others => '0');
       elsif rising_edge(clk) then
-        v_cnt_addr := v_cnt_addr + 1 ;
-        raw_wr_add <= std_logic_vector(v_cnt_addr);
-        raw_wr_dat <= heat_values(to_integer(v_cnt_addr))(g_s_data-1 downto 0);
-        raw_wr_ena <= '1';
+        v_cnt_addr    := v_cnt_addr + 1 ;
+        raw_wr_add    <= std_logic_vector(v_cnt_addr);
+        raw_wr_ena    <= '1';
+        -- small operation required to get 'temperature'
+        -- if unsigned(heat_values(to_integer(v_cnt_addr))) > 2047 then
+          -- v_temperature :=  unsigned(heat_values(to_integer(v_cnt_addr))) - 4096;
+        -- else
+          -- v_temperature :=  unsigned(heat_values(to_integer(v_cnt_addr)));
+        -- end if;
+        v_temperature := unsigned(heat_values(to_integer(v_cnt_addr)));
+        raw_wr_dat    <= std_logic_vector(v_temperature)(g_s_data-1 downto 0);
       end if;
   end process;
 
-  
+
 end rtl;
