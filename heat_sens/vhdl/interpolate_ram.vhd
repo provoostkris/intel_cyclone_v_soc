@@ -36,8 +36,8 @@ architecture rtl of interpolate_ram is
     constant c_grid_a       : natural := c_grid_x * c_grid_y; --! grid size total dimention (integer)
 
     type t_a_ram               is array ( integer range <> ) of unsigned(g_s_data-1 downto 0);
-    type t_x_ram               is array ( 0 to 1*c_int_f-1 ) of t_a_ram( 0 to 2**g_s_addr-1);
-    type t_y_ram               is array ( 0 to 2*c_int_f-1 ) of t_a_ram( 0 to 2**g_s_addr-1);
+    type t_x_ram               is array ( 0 to c_int_f-1 )          of t_a_ram( 0 to 2**g_s_addr-1);
+    type t_y_ram               is array ( 0 to c_int_f*c_int_f-1 )  of t_a_ram( 0 to 2**g_s_addr-1);
 
     type t_ram_dat             is array ( integer range <> ) of unsigned(g_s_data-1 downto 0);
     type t_ram_loc             is array ( integer range <> ) of integer range 0 to 2**g_s_addr-1;
@@ -65,28 +65,30 @@ architecture rtl of interpolate_ram is
 
     -- 2nd stage memory
     signal int_y_wr_add     : unsigned(g_s_addr-1 downto 0);
-    signal int_y_wr_dat     : t_ram_dat( 0 to 2*c_int_f-1);
-    signal int_y_wr_ram     : t_ram_loc( 0 to 2*c_int_f-1);
+    signal int_y_wr_dat     : t_ram_dat( 0 to c_int_f*c_int_f-1);
+    signal int_y_wr_ram     : t_ram_loc( 0 to c_int_f*c_int_f-1);
 
     -- 3rd stage memory
     signal grid_rd_row      : unsigned(g_s_addr/2+g_int_f-1 downto 0);
     signal grid_rd_col      : unsigned(g_s_addr/2+g_int_f-1 downto 0);
-    signal grid_rd_x        : integer range 0 to 2**(g_s_addr+(2*g_int_f))-1;
-    signal grid_rd_y        : integer range 0 to 2**c_int_f-1;
+    signal grid_rd_x        : integer range 0 to 2**g_s_addr-1;
+    signal grid_rd_y        : integer range 0 to c_int_f*c_int_f-1;
     signal grid_rd_dat      : unsigned(g_s_data-1 downto 0);
     signal grid_wr_add      : integer range 0 to 2**(g_s_addr+(2*g_int_f))-1;
     signal grid_wr_add_d    : integer range 0 to 2**(g_s_addr+(2*g_int_f))-1;
     --references for interpolation
-    type t_ref_points         is array ( integer range <> ) of unsigned(g_s_data-1 downto 0);
-    signal ref_x_points       : t_ref_points ( 0 to 2-1 );
-    signal ref_y_points       : t_ref_points ( 0 to 2*c_int_f-1 );
+    type t_ref_points_1d      is array ( integer range <> ) of unsigned(g_s_data-1 downto 0);
+    type t_ref_points_2d      is array ( integer range <> ) of t_ref_points_1d( 0 to 1 );
+    signal ref_x_points       : t_ref_points_1d ( 0 to 1 );
+    signal ref_y_points       : t_ref_points_2d ( 0 to c_int_f-1 );
 
     --calculations array's
-    type t_calc_values      is array ( integer range <> ) of integer range 0 to 2**(g_s_data+g_int_f);
-    signal calc_x_value   : t_calc_values ( 0 to 1*c_int_f-1 );
+    type t_calc_values_1d is array ( integer range <> ) of integer range 0 to 2**(g_s_data+g_int_f);
+    type t_calc_values_2d is array ( integer range <> ) of t_calc_values_1d( 0 to c_int_f-1 );
+    signal calc_x_value   : t_calc_values_1d ( 0 to c_int_f-1 );
     signal calc_x_ena     : std_logic;
     signal calc_x_ena_d   : std_logic;
-    signal calc_y_value   : t_calc_values ( 0 to 2*c_int_f-1 );
+    signal calc_y_value   : t_calc_values_2d ( 0 to c_int_f-1 );
     signal calc_y_ena     : std_logic;
     signal calc_y_ena_d   : std_logic;
 
@@ -218,33 +220,32 @@ begin
       process(reset_n, clk) is
       begin
           if reset_n = '0' then
-            ref_y_points(i)          <= ( others => '0');
-            ref_y_points(i+c_int_f)  <= ( others => '0');
+            ref_y_points(i)  <= ( others => ( others => '0'));
           elsif rising_edge(clk) then
             if step(8) = '1' then
-              ref_y_points(i)         <= ref_y_points(i+c_int_f);
-              ref_y_points(i+c_int_f) <= int_x_rd_dat(i);
+              ref_y_points(i)(1) <= int_x_rd_dat(i);
+              ref_y_points(i)(0) <= ref_y_points(i)(1);
             end if;
           end if;
       end process;
     end generate;
 
     --! perform interpolation
-    gen_linear_y_points: for j in 0 to c_int_f-1 generate
-      process(reset_n, clk) is
-      begin
-          if reset_n='0' then
-            calc_y_value(j) <= 0;
-          elsif rising_edge(clk) then
-            if step(9) = '1' then
-              -- simple linear operation should avoid DPS/MACC blocks
-              calc_y_value(j)         <=  (c_int_f-j) * to_integer(unsigned(ref_y_points(0)))           / c_int_f +
-                                          (        j) * to_integer(unsigned(ref_y_points(0+c_int_f)))   / c_int_f ;
-              calc_y_value(j+c_int_f) <=  (c_int_f-j) * to_integer(unsigned(ref_y_points(1)))           / c_int_f +
-                                          (        j) * to_integer(unsigned(ref_y_points(1+c_int_f)))   / c_int_f ;
+    gen_linear_y_2d_points: for i in 0 to c_int_f-1 generate
+      gen_linear_y_1d_points: for j in 0 to c_int_f-1 generate
+        process(reset_n, clk) is
+        begin
+            if reset_n='0' then
+              calc_y_value(i)(j) <= 0;
+            elsif rising_edge(clk) then
+              if step(9) = '1' then
+                -- simple linear operation should avoid DPS/MACC blocks
+                calc_y_value(i)(j)      <=  (c_int_f-j) * to_integer(unsigned(ref_y_points(i)(0)))        / c_int_f +
+                                            (        j) * to_integer(unsigned(ref_y_points(i)(1)))        / c_int_f ;
+              end if;
             end if;
-          end if;
-      end process;
+        end process;
+      end generate;
     end generate;
 
     --! store interpolated values
@@ -259,19 +260,21 @@ begin
           end if;
       end process;
 
-      gen_wr_y_mem: for i in 0 to 2*c_int_f-1 generate
+    gen_wr_y_1d_mem: for i in 0 to c_int_f-1 generate
+      gen_wr_y_2d_mem: for j in 0 to c_int_f-1 generate
         process(reset_n, clk) is
         begin
             if reset_n = '0' then
-              int_y_wr_ram(i) <= 0;
-              int_y_wr_dat(i) <= ( others => '0');
+              int_y_wr_ram(i+j*c_int_f) <= 0;
+              int_y_wr_dat(i+j*c_int_f) <= ( others => '0');
             elsif rising_edge(clk) then
-              int_y_wr_ram(i) <= to_integer(int_y_wr_add);
-              int_y_wr_dat(i) <= to_unsigned(calc_y_value(i),g_s_data);
-              int_y_mem(i)(int_y_wr_ram(i)) <= int_y_wr_dat(i);
+              int_y_wr_ram(i+j*c_int_f) <= to_integer(int_y_wr_add);
+              int_y_wr_dat(i+j*c_int_f) <= to_unsigned(calc_y_value(i)(j),g_s_data);
+              int_y_mem(i+j*c_int_f)(int_y_wr_ram(i+j*c_int_f)) <= int_y_wr_dat(i+j*c_int_f);
             end if;
         end process;
       end generate;
+    end generate;
 
     --! unfold grid
     --! because of the two pass interpolation
@@ -307,7 +310,7 @@ begin
           v_x_off       := v_col mod c_int_f;
           v_y_off       := v_col  /  c_int_f;
           grid_rd_x     <= ( (v_row / c_int_f )  *   c_grid_x )  + v_y_off ;
-          grid_rd_y     <= ( (v_row mod c_int_f ) * c_int_f  )  + v_x_off ;
+          grid_rd_y     <= (v_row mod c_int_f )  + v_x_off*c_int_f ;
           --write access
           grid_wr_add   <= v_row + v_col*c_grid_x*c_int_f;
           grid_wr_add_d <= grid_wr_add;
