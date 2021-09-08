@@ -83,7 +83,7 @@ architecture rtl of amg_controller is
   signal state         : t_state;                        --state machine
   signal busy_shift    : std_logic_vector(3 downto 0);   --shift register with busy port
   signal proceed       : std_logic;
-  
+
 --! RAW pixel values
   constant c_pixel_area : integer := 64;
   constant c_pixel_res  : integer := 16;
@@ -104,7 +104,7 @@ begin
       busy_shift  <= busy_shift(busy_shift'high-1 downto 0) & busy;
     end if;
   end process;
-  
+
   -- create some delay to have to sensor booted properly
   process(clk, reset_n)
     variable v_cnt : unsigned(20 downto 0);
@@ -191,7 +191,7 @@ begin
             end if;
           when amg_frame_rate_val =>
             rw        <= '0';
-            data_wr   <= c_amg_fpsc_framerate_1;
+            data_wr   <= c_amg_fpsc_framerate_10;
             ena       <= not busy_shift(busy_shift'high) ;
             -- state control
             if busy_shift = c_busy_is_over then
@@ -263,7 +263,7 @@ begin
   -- push the heat values on a memory interface
   process(clk,reset_n) is
     variable v_cnt_addr    : unsigned(raw_wr_add'range);
-    variable v_temperature : unsigned(c_pixel_res-1 downto 0);
+    variable v_temperature : std_logic_vector(c_pixel_res-1 downto 0);
   begin
       if reset_n = '0' then
         raw_wr_add    <= ( others => '0');
@@ -275,16 +275,12 @@ begin
         v_cnt_addr    := v_cnt_addr + 1 ;
         raw_wr_add    <= std_logic_vector(v_cnt_addr);
         raw_wr_ena    <= '1';
-        -- small operation required to get 'temperature'
-        -- if unsigned(heat_values(to_integer(v_cnt_addr))) > 2047 then
-          -- v_temperature :=  unsigned(heat_values(to_integer(v_cnt_addr))) - 4096;
-        -- else
-          -- v_temperature :=  unsigned(heat_values(to_integer(v_cnt_addr)));
-        -- end if;
-        v_temperature := unsigned(heat_values(to_integer(v_cnt_addr)));
-        raw_wr_dat    <= std_logic_vector(v_temperature)(g_s_data-1 downto 0);
+        v_temperature := heat_values(to_integer(v_cnt_addr));
+        raw_wr_dat    <= v_temperature(10 downto 3);
       end if;
   end process;
 
 
 end rtl;
+
+-- https://github.com/melopero/Melopero_AMG8833/blob/master/module/melopero_amg8833/AMG8833.py

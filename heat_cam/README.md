@@ -3,8 +3,8 @@ The design aims to provide a termal camera, with the utilisation of old and chea
 
 
 ### dependencies
-The heat sensor code from : ![heat_sens](/heat_sens/README.md)
-The HDMI controller code from : ![hdmi](/hdmi/README.md)
+The heat sensor code from : [heat_sens](/heat_sens/README.md)
+The HDMI controller code from : [hdmi](/hdmi/README.md)
 
 ### User input
 SW(0) : can be used to reset
