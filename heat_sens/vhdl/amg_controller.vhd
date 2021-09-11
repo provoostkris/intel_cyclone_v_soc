@@ -16,7 +16,7 @@ entity amg_controller is
   port(
     clk         : in   std_logic;                    --system clock
     reset_n     : in   std_logic;                    --active low reset
-    swap_byte   : in   std_logic;                    --swap pixel bytes
+    resolution  : in   std_logic_vector(1 downto 0); --change the resolution for temp
     ena         : out  std_logic;                    --latch in command
     addr        : out  std_logic_vector(6 downto 0); --address of target slave
     rw          : out  std_logic;                    --'0' is write, '1' is read
@@ -61,7 +61,8 @@ architecture rtl of amg_controller is
   constant c_amg_ave_on           : std_logic_vector(7 downto 0) := x"20"; --! 2x AVE
   --! reset register values
   constant c_amg_rst_flagreset    : std_logic_vector(7 downto 0) := x"30"; --! flag reset
-  constant c_amg_rst_initialreset : std_logic_vector(7 downto 0) := x"3F"; --! flag initial reset
+  constant c_amg_rst_initialreset : std_logic_vector(7 downto 0) := x"30"; --! flag initial reset
+  -- constant c_amg_rst_initialreset : std_logic_vector(7 downto 0) := x"3F"; --! flag initial reset
   --! frame rate control register values
   constant c_amg_fpsc_framerate_10: std_logic_vector(7 downto 0) := x"00"; --! 10 fps measurement
   constant c_amg_fpsc_framerate_1 : std_logic_vector(7 downto 0) := x"01"; --!  1 fps measurement
@@ -155,7 +156,7 @@ begin
           when idle =>
             -- state control
             if busy = '0' then
-              state   <=  amg_pwr_reg;
+              state   <=  amg_reset_reg;
             end if;
           when amg_pwr_reg =>
             rw        <= '0';
@@ -171,7 +172,7 @@ begin
             ena       <= not busy_shift(busy_shift'high) ;
             -- state control
             if busy_shift = c_busy_is_over then
-              state   <=  amg_reset_reg;
+              state   <=  amg_read_pixels_addr_low;
             end if;
           when amg_reset_reg =>
             rw        <= '0';
@@ -203,8 +204,8 @@ begin
             ena       <= not busy_shift(busy_shift'high) ;
             -- state control
             if busy_shift = c_busy_is_over then
-              state   <=  amg_intc_reg;
-            end if;          
+              state   <=  amg_pwr_reg;
+            end if;
           when amg_intc_reg =>
             rw        <= '0';
             data_wr   <= c_amg_register_intc;
@@ -258,15 +259,9 @@ begin
             ena       <= not busy_shift(busy_shift'high) ;
             -- state control
             if busy_shift = c_busy_is_over then
-              state   <=  amg_read_pixels_high;
+              state   <=  amg_process_area;
             end if;
-            -- store the heat value
-            case swap_byte is
-              when '0' =>
-                heat_values(cnt_pix)( 7 downto 0) <= data_rd;
-              when others =>
-                heat_values(cnt_pix)(15 downto 8) <= data_rd;
-            end case;
+            heat_values(cnt_pix)( 7 downto 0) <= data_rd;
           when amg_read_pixels_high =>
             rw        <= '1';
             data_wr   <= ( others => '0');
@@ -275,13 +270,7 @@ begin
             if busy_shift = c_busy_is_over then
               state   <=  amg_process_area;
             end if;
-            -- store the heat value
-            case swap_byte is
-              when '1' =>
-                heat_values(cnt_pix)( 7 downto 0) <= data_rd;
-              when others =>
-                heat_values(cnt_pix)(15 downto 8) <= data_rd;
-            end case;
+            heat_values(cnt_pix)(15 downto 8) <= data_rd;
           when amg_process_area =>
             if cnt_pix < c_pixel_area-1 then
               cnt_pix <=  cnt_pix + 1;
@@ -302,20 +291,23 @@ begin
 
   -- push the heat values on a memory interface
   process(clk,reset_n) is
-    variable v_temperature : std_logic_vector(c_pixel_res-1 downto 0);
   begin
       if reset_n = '0' then
         cnt_addr      <= ( others => '0');
         raw_wr_add    <= ( others => '0');
         raw_wr_dat    <= ( others => '0');
         raw_wr_ena    <= '0';
-        v_temperature := ( others => '0');
       elsif rising_edge(clk) then
         cnt_addr      <= cnt_addr + 1;
         raw_wr_add    <= std_logic_vector(cnt_addr);
         raw_wr_ena    <= '1';
-        v_temperature := heat_values(to_integer(cnt_addr));
-        raw_wr_dat    <= v_temperature(11 downto 11-(g_s_data-1) );
+        case resolution is 
+          when "00"   => raw_wr_dat    <= heat_values(to_integer(cnt_addr))(g_s_data-1+3 downto 0+3 );
+          when "01"   => raw_wr_dat    <= heat_values(to_integer(cnt_addr))(g_s_data-1+2 downto 0+2 );
+          when "10"   => raw_wr_dat    <= heat_values(to_integer(cnt_addr))(g_s_data-1+1 downto 0+1 );
+          when "11"   => raw_wr_dat    <= heat_values(to_integer(cnt_addr))(g_s_data-1+0 downto 0+0 );
+          when others => raw_wr_dat    <= ( others => '1');
+        end case;
         -- note that the value is two complement, but we dont process
         -- negative values, so the code can remain
       end if;
