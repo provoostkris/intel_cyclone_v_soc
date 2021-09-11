@@ -12,9 +12,9 @@ entity heat_cam is
   generic (
     g_tst_mode  : boolean := false ;
     g_s_addr    : natural :=  6;--! size of address
-    g_s_data    : natural := 16;--! size of data
-    g_int_f     : natural :=  4;--! interpolation factor ( in 2**n)
-    g_arr_init  : boolean := false;
+    g_s_data    : natural :=  8;--! size of data
+    g_int_f     : natural :=  2;--! interpolation factor ( in 2**n)
+    g_arr_init  : boolean := true;
     input_clk   : integer := 25_000_000; --input clock speed from user logic in hz
     bus_clk     : integer := 400_000     --speed the i2c bus (scl) will run at in hz
   );
@@ -115,6 +115,7 @@ signal data_wr        : std_logic_vector(7 downto 0); --data to write to slave
 signal busy           : std_logic;                    --indicates transaction in progress
 signal data_rd        : std_logic_vector(7 downto 0); --data read from slave
 signal ack_error      : std_logic;                    --flag if improper acknowledge from slave
+signal resolution     : std_logic_vector(1 downto 0);
 
 signal raw_wr_ena    : std_logic;
 signal raw_wr_add    : std_logic_vector(g_s_addr-1 downto 0);
@@ -157,6 +158,7 @@ led(5)                  <= SW(1);
 led(6)                  <= SW(2);
 led(7)                  <= SW(3);
 
+resolution              <= SW(1) & SW(2);
 --! syncronous resets
 p_rst_pll_25: process (clk_pll_25, pll_locked)
 begin
@@ -242,7 +244,7 @@ gen_live_mode: if g_tst_mode = false generate
     port map(
       clk           => clk_pll_25      ,        --system clock
       reset_n       => rst_pll_25_n    ,        --active low reset
-      swap_byte     => SW(1)           ,        --swap pixel bytes
+      resolution    => resolution      ,        --change the resolution for temp
       ena           => ena             ,        --latch in command
       addr          => addr            ,        --address of target slave
       rw            => rw              ,        --'0' is write, '1' is read
@@ -318,8 +320,10 @@ i_interpolate: entity work.interpolate_ram(rtl)
           ram_wr_ena <= int_rd_ena;
           -- for now just map the data
           -- later a mapping to the R-G-B values must happen
-          ram_wr_dat(int_rd_dat'range) <= int_rd_dat;
-          ram_wr_dat(ram_wr_dat'high downto int_rd_dat'high) <= ( others => '0');
+          ram_wr_dat                   <= ( others => '0');
+          ram_wr_dat(1*8-1 downto 0*8) <= int_rd_dat;
+          ram_wr_dat(2*8-1 downto 1*8) <= ( others => '0');
+          ram_wr_dat(3*8-1 downto 2*8) <= ( others => '0');
       end if;
   end process;
   
@@ -399,15 +403,12 @@ i_interpolate: entity work.interpolate_ram(rtl)
 --! we will also wait a moment for the i2c to complete after reset
 p_wait: process (clk_pll_25, rst_pll_25)
   variable v_cnt : unsigned(24 downto 0);
-  variable v_del : unsigned(25 downto 0);
 begin
   if rst_pll_25 = '1' then
     i2c_hold  <= '0';
     v_cnt     := ( others => '0');
-    v_del     := ( others => '0');
   elsif rising_edge(clk_pll_25) then
     v_cnt     := v_cnt + 1;
-    v_del     := v_del + 1;
     i2c_hold  <= v_cnt(v_cnt'high) or i2c_hold;
   end if;
 end process p_wait;
