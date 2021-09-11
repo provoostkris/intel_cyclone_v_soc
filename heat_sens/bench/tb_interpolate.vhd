@@ -18,13 +18,13 @@ end entity tb_interpolate;
 
 architecture rtl of tb_interpolate is
 
-constant c_clk_per  : time      := 20 ns ;
+constant c_clk_per  : time := 20 ns ;
 
 signal clk          : std_ulogic :='0';
 signal rst          : std_ulogic :='0';
 signal rst_n        : std_ulogic ;
 
-constant c_s_addr : natural :=  4;--! size of address (2-4-6-8-...)
+constant c_s_addr : natural :=  2;--! size of address (2-4-6-8-...)
 constant c_s_data : natural :=  8;--! size of data
 constant c_int_f  : natural :=  1;--! interpolation factor ( in 2**n)
 

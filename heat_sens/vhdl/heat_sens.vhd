@@ -12,7 +12,7 @@ entity heat_sens is
   GENERIC(
     g_s_addr    : natural :=  6;--! size of address
     g_s_data    : natural :=  8;--! size of data
-    g_int_f     : natural :=  1;--! interpolation factor ( in 2**n)
+    g_int_f     : natural :=  5;--! interpolation factor ( in 2**n)
     g_arr_init  : boolean := false;
     input_clk   : integer := 25_000_000; --input clock speed from user logic in hz
     bus_clk     : integer := 400_000     --speed the i2c bus (scl) will run at in hz
@@ -168,6 +168,7 @@ i_amg_controller: entity work.amg_controller
   port map(
     clk           => clk_pll_25      ,        --system clock
     reset_n       => rst_pll_25_n    ,        --active low reset
+    resolution    => "10"            ,        --pixel resolution
     ena           => ena             ,        --latch in command
     addr          => addr            ,        --address of target slave
     rw            => rw              ,        --'0' is write, '1' is read
@@ -184,7 +185,7 @@ i_amg_controller: entity work.amg_controller
 --!
 --! interpolate the sensor values 
 --!
-i_interpolate: entity work.interpolate(rtl)
+i_interpolate: entity work.interpolate_ram(rtl)
   generic map(
     g_s_addr => g_s_addr ,
     g_s_data => g_s_data ,
