@@ -7,8 +7,9 @@ The heat sensor code from : [heat_sens](/heat_sens/README.md)
 The HDMI controller code from : [hdmi](/hdmi/README.md)
 
 ### User input
-SW(0) : can be used to reset
-SW(1) : swap the two bytes in the heatsensor data read back
+SW(0) : reset
+SW(1) : configure resolution  
+SW(2) : configure resolution
  
 ### Wiring
 The sensor is wired to the boards arduino header

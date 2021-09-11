@@ -172,7 +172,7 @@ begin
             ena       <= not busy_shift(busy_shift'high) ;
             -- state control
             if busy_shift = c_busy_is_over then
-              state   <=  amg_read_pixels_addr_low;
+              state   <=  amg_moveavg_reg;
             end if;
           when amg_reset_reg =>
             rw        <= '0';
@@ -200,7 +200,7 @@ begin
             end if;
           when amg_frame_rate_val =>
             rw        <= '0';
-            data_wr   <= c_amg_fpsc_framerate_1;
+            data_wr   <= c_amg_fpsc_framerate_10;
             ena       <= not busy_shift(busy_shift'high) ;
             -- state control
             if busy_shift = c_busy_is_over then

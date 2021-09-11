@@ -13,7 +13,7 @@ entity heat_cam is
     g_tst_mode  : boolean := false ;
     g_s_addr    : natural :=  6;--! size of address
     g_s_data    : natural :=  8;--! size of data
-    g_int_f     : natural :=  2;--! interpolation factor ( in 2**n)
+    g_int_f     : natural :=  4;--! interpolation factor ( in 2**n)
     g_arr_init  : boolean := true;
     input_clk   : integer := 25_000_000; --input clock speed from user logic in hz
     bus_clk     : integer := 400_000     --speed the i2c bus (scl) will run at in hz
@@ -321,9 +321,9 @@ i_interpolate: entity work.interpolate_ram(rtl)
           -- for now just map the data
           -- later a mapping to the R-G-B values must happen
           ram_wr_dat                   <= ( others => '0');
-          ram_wr_dat(1*8-1 downto 0*8) <= int_rd_dat;
-          ram_wr_dat(2*8-1 downto 1*8) <= ( others => '0');
-          ram_wr_dat(3*8-1 downto 2*8) <= ( others => '0');
+          ram_wr_dat(1*8-1 downto 0*8) <= std_logic_vector(to_unsigned((to_integer(unsigned(int_rd_dat))-80)*3,8));
+          ram_wr_dat(2*8-1 downto 1*8) <= std_logic_vector(to_unsigned((to_integer(unsigned(int_rd_dat))-80)*3,8));
+          ram_wr_dat(3*8-1 downto 2*8) <= std_logic_vector(to_unsigned((to_integer(unsigned(int_rd_dat))-80)*3,8));
       end if;
   end process;
   
@@ -385,7 +385,9 @@ i_interpolate: entity work.interpolate_ram(rtl)
       HDMI_TX_VS                  <= '1';
       HDMI_TX_DE                  <= '0';
     elsif rising_edge(clk_pixel) then
-      HDMI_TX_D                   <= rgb;
+      HDMI_TX_D(1*8-1 downto 0*8) <= rgb(1*8-1 downto 0*8);
+      HDMI_TX_D(2*8-1 downto 1*8) <= rgb(2*8-1 downto 1*8);
+      HDMI_TX_D(3*8-1 downto 2*8) <= rgb(3*8-1 downto 2*8);
       HDMI_TX_HS                  <= hs_out;
       HDMI_TX_VS                  <= vs_out;
       HDMI_TX_DE                  <= de_out;
