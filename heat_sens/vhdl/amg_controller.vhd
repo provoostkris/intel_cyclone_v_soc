@@ -55,22 +55,29 @@ architecture rtl of amg_controller is
   constant c_amg_pctl_sleep       : std_logic_vector(7 downto 0) := x"10"; --! sleep mode
   constant c_amg_pctl_standby10   : std_logic_vector(7 downto 0) := x"21"; --! stand-by (10 sec intermittence)
   constant c_amg_pctl_standby60   : std_logic_vector(7 downto 0) := x"20"; --! stand-by (60 sec intermittence)
+  --! interrupt register values
+  constant c_amg_irq_reactivate   : std_logic_vector(7 downto 0) := x"00"; --! no IRQ
+  --! ave register values
+  constant c_amg_ave_on           : std_logic_vector(7 downto 0) := x"20"; --! 2x AVE
   --! reset register values
   constant c_amg_rst_flagreset    : std_logic_vector(7 downto 0) := x"30"; --! flag reset
-  -- constant c_amg_rst_initialreset : std_logic_vector(7 downto 0) := x"30"; --! flag reset
-  constant c_amg_rst_initialreset : std_logic_vector(7 downto 0) := x"3F"; --! flag reset
+  constant c_amg_rst_initialreset : std_logic_vector(7 downto 0) := x"3F"; --! flag initial reset
   --! frame rate control register values
   constant c_amg_fpsc_framerate_10: std_logic_vector(7 downto 0) := x"00"; --! 10 fps measurement
   constant c_amg_fpsc_framerate_1 : std_logic_vector(7 downto 0) := x"01"; --!  1 fps measurement
 
 --! constrol signals
   type t_state is(idle,
-                  amg_reset,
-                  amg_initialize,
-                  amg_frame_rate,
+                  amg_reset_reg,
+                  amg_reset_val,
+                  amg_frame_rate_reg,
                   amg_frame_rate_val,
-                  amg_wake_up,
-                  amg_pwr_ctrl,
+                  amg_intc_reg,
+                  amg_intc_val,
+                  amg_pwr_reg,
+                  amg_pwr_val,
+                  amg_moveavg_reg,
+                  amg_moveavg_val,
                   wait_before_read,
                   amg_read_pixels_addr_low,
                   amg_read_pixels_low,
@@ -90,6 +97,7 @@ architecture rtl of amg_controller is
   type   t_a_slv_16     is array ( integer range <> ) of std_logic_vector(c_pixel_res-1 downto 0);
   signal heat_values    : t_a_slv_16(0 to c_pixel_area-1);
   signal cnt_pix        : integer range 0 to c_pixel_area-1;
+  signal cnt_addr       : unsigned(raw_wr_add'range);
 
 
 begin
@@ -147,41 +155,41 @@ begin
           when idle =>
             -- state control
             if busy = '0' then
-              state   <=  amg_wake_up;
+              state   <=  amg_pwr_reg;
             end if;
-          when amg_wake_up =>
+          when amg_pwr_reg =>
             rw        <= '0';
             data_wr   <= c_amg_register_pctl;
             ena       <= not busy_shift(busy_shift'high) ;
             -- state control
             if busy_shift = c_busy_is_over then
-              state   <=  amg_pwr_ctrl;
+              state   <=  amg_pwr_val;
             end if;
-          when amg_pwr_ctrl =>
+          when amg_pwr_val =>
             rw        <= '0';
             data_wr   <= c_amg_pctl_normal;
             ena       <= not busy_shift(busy_shift'high) ;
             -- state control
             if busy_shift = c_busy_is_over then
-              state   <=  amg_reset;
+              state   <=  amg_reset_reg;
             end if;
-          when amg_reset =>
+          when amg_reset_reg =>
             rw        <= '0';
             data_wr   <= c_amg_register_rst;
             ena       <= not busy_shift(busy_shift'high) ;
             -- state control
             if busy_shift = c_busy_is_over then
-              state   <=  amg_initialize;
+              state   <=  amg_reset_val;
             end if;
-          when amg_initialize =>
+          when amg_reset_val =>
             rw        <= '0';
             data_wr   <= c_amg_rst_initialreset;
             ena       <= not busy_shift(busy_shift'high) ;
             -- state control
             if busy_shift = c_busy_is_over then
-              state   <=  amg_frame_rate;
+              state   <=  amg_frame_rate_reg;
             end if;
-          when amg_frame_rate =>
+          when amg_frame_rate_reg =>
             rw        <= '0';
             data_wr   <= c_amg_register_fpsc;
             ena       <= not busy_shift(busy_shift'high) ;
@@ -191,7 +199,23 @@ begin
             end if;
           when amg_frame_rate_val =>
             rw        <= '0';
-            data_wr   <= c_amg_fpsc_framerate_10;
+            data_wr   <= c_amg_fpsc_framerate_1;
+            ena       <= not busy_shift(busy_shift'high) ;
+            -- state control
+            if busy_shift = c_busy_is_over then
+              state   <=  amg_intc_reg;
+            end if;          
+          when amg_intc_reg =>
+            rw        <= '0';
+            data_wr   <= c_amg_register_intc;
+            ena       <= not busy_shift(busy_shift'high) ;
+            -- state control
+            if busy_shift = c_busy_is_over then
+              state   <=  amg_intc_val;
+            end if;
+          when amg_intc_val =>
+            rw        <= '0';
+            data_wr   <= c_amg_irq_reactivate;
             ena       <= not busy_shift(busy_shift'high) ;
             -- state control
             if busy_shift = c_busy_is_over then
@@ -199,6 +223,22 @@ begin
             end if;
           when wait_before_read =>
             if proceed = '1' then
+              state   <=  amg_moveavg_reg;
+            end if;
+          when amg_moveavg_reg =>
+            rw        <= '0';
+            data_wr   <= c_amg_register_ave;
+            ena       <= not busy_shift(busy_shift'high) ;
+            -- state control
+            if busy_shift = c_busy_is_over then
+              state   <=  amg_moveavg_val;
+            end if;
+          when amg_moveavg_val =>
+            rw        <= '0';
+            data_wr   <= c_amg_ave_on;
+            ena       <= not busy_shift(busy_shift'high) ;
+            -- state control
+            if busy_shift = c_busy_is_over then
               state   <=  amg_read_pixels_addr_low;
             end if;
           when amg_read_pixels_addr_low =>
@@ -262,21 +302,22 @@ begin
 
   -- push the heat values on a memory interface
   process(clk,reset_n) is
-    variable v_cnt_addr    : unsigned(raw_wr_add'range);
     variable v_temperature : std_logic_vector(c_pixel_res-1 downto 0);
   begin
       if reset_n = '0' then
+        cnt_addr      <= ( others => '0');
         raw_wr_add    <= ( others => '0');
         raw_wr_dat    <= ( others => '0');
         raw_wr_ena    <= '0';
-        v_cnt_addr    := ( others => '0');
         v_temperature := ( others => '0');
       elsif rising_edge(clk) then
-        v_cnt_addr    := v_cnt_addr + 1 ;
-        raw_wr_add    <= std_logic_vector(v_cnt_addr);
+        cnt_addr      <= cnt_addr + 1;
+        raw_wr_add    <= std_logic_vector(cnt_addr);
         raw_wr_ena    <= '1';
-        v_temperature := heat_values(to_integer(v_cnt_addr));
-        raw_wr_dat    <= v_temperature(10 downto 3);
+        v_temperature := heat_values(to_integer(cnt_addr));
+        raw_wr_dat    <= v_temperature(11 downto 11-(g_s_data-1) );
+        -- note that the value is two complement, but we dont process
+        -- negative values, so the code can remain
       end if;
   end process;
 
@@ -284,3 +325,5 @@ begin
 end rtl;
 
 -- https://github.com/melopero/Melopero_AMG8833/blob/master/module/melopero_amg8833/AMG8833.py
+-- https://industry.panasonic.eu/nl/components/sensors/industrial-sensors/grid-eye/amg88xx-high-performance-type/amg8833-amg8833
+-- https://github.com/michelheil/Arduino/blob/master/lib/AMG8833/main.c
