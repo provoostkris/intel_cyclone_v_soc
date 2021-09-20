@@ -122,8 +122,8 @@ alias rst_pixel_n : std_logic is rst_pll_148_n;
 constant OBJECT_SIZE  : natural := 16;
 constant PIXEL_SIZE   : natural := 24;
 constant ram_d        : natural := 8*3;
-constant ram_x        : natural := 10;
-constant ram_y        : natural := 10;
+constant ram_x        : natural := 8;
+constant ram_y        : natural := 8;
 
 signal video_active   : std_logic;
 signal pixel_x        : std_logic_vector(OBJECT_SIZE-1 downto 0);
@@ -134,14 +134,10 @@ signal ram_wr_add     : std_logic_vector(ram_x+ram_y-1 downto 0);
 
 signal i2c_rdy        : std_logic;
 signal i2c_hold       : std_logic;
-  
+
 signal hdmi_hold      : std_logic;
 signal key_db         : std_logic_vector(1 downto 0);
 signal sw_db          : std_logic_vector(3 downto 0);
-
--- signal that need to drive the HDcontroller
-type   t_a_std      is array ( integer range <> ) of std_logic;
-type   t_a_slv_24   is array ( integer range <> ) of std_logic_vector(23 downto 0);
 
 signal clk_out      : std_logic;
 signal hs_out       : std_logic;
@@ -304,7 +300,7 @@ gen_imp_0: if g_imp = 0 generate
     vgaClock   => clk_out,
     RGBchannel => rgb
   );
-  
+
 end generate;
 
 --!
@@ -364,7 +360,7 @@ gen_imp_2: if g_imp = 2 generate
       pixel_x       => pixel_x,
       pixel_y       => pixel_y
     );
-    
+
   --! video_ram instance
   i_video_ram: entity work.video_ram(rtl)
     generic map (
@@ -394,13 +390,17 @@ gen_imp_2: if g_imp = 2 generate
       if rst_pixel='1' then
           ram_wr_add <= ( others => '0');
           ram_wr_dat <= ( others => '0');
-          ram_wr_ena <= '1';
+          ram_wr_ena <= '0';
           v_cnt      := ( others => '0');
       elsif rising_edge(clk_pixel) then
-          v_cnt      := v_cnt + 1 ;
           ram_wr_add <= std_logic_vector(v_cnt(ram_wr_add'range));
           ram_wr_dat <= std_logic_vector(v_cnt(ram_wr_dat'range));
-          ram_wr_ena <= '1';
+          if v_cnt < 2**PIXEL_SIZE then
+            v_cnt      := v_cnt + 1 ;
+            ram_wr_ena <= '1';
+          else
+            ram_wr_ena <= '0';
+          end if;
       end if;
   end process;
 
