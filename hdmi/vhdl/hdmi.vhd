@@ -87,6 +87,7 @@ component hdmi_pll is
     rst      : in  std_logic;        -- reset
     outclk_0 : out std_logic;        -- clk
     outclk_1 : out std_logic;        -- clk
+    outclk_2 : out std_logic;        -- clk
     locked   : out std_logic         -- export
   );
 end component hdmi_pll;
@@ -97,29 +98,32 @@ signal rst_pll_50    : std_logic;
 signal rst_pll_50_n  : std_logic;
 signal rst_pll_40    : std_logic;
 signal rst_pll_40_n  : std_logic;
-signal rst_pll_65    : std_logic;
-signal rst_pll_65_n  : std_logic;
+signal rst_pll_74    : std_logic;
+signal rst_pll_74_n  : std_logic;
+signal rst_pll_148   : std_logic;
+signal rst_pll_148_n : std_logic;
 
 signal clk_pll_25       : std_logic;
 signal clk_pll_50       : std_logic;
 signal clk_pll_125      : std_logic;
 signal clk_pll_40       : std_logic;
-signal clk_pll_65       : std_logic;
+signal clk_pll_74       : std_logic;
+signal clk_pll_148      : std_logic;
 signal pll_locked       : std_logic;
 signal hdmi_pll_locked  : std_logic;
 
 -- now select the pixel clock/reset depending on the resolution
-alias clk_pixel   : std_logic is clk_pll_40;
-alias rst_pixel   : std_logic is rst_pll_40;
-alias rst_pixel_n : std_logic is rst_pll_40_n;
+alias clk_pixel   : std_logic is clk_pll_148;
+alias rst_pixel   : std_logic is rst_pll_148;
+alias rst_pixel_n : std_logic is rst_pll_148_n;
 
 
 -- local signals
 constant OBJECT_SIZE  : natural := 16;
 constant PIXEL_SIZE   : natural := 24;
 constant ram_d        : natural := 8*3;
-constant ram_x        : natural := 8;
-constant ram_y        : natural := 8;
+constant ram_x        : natural := 10;
+constant ram_y        : natural := 10;
 
 signal video_active   : std_logic;
 signal pixel_x        : std_logic_vector(OBJECT_SIZE-1 downto 0);
@@ -194,16 +198,28 @@ begin
 end process p_rst_pll_40;
 
 --! syncronous resets
-p_rst_pll_65 : process (clk_pll_65 , hdmi_pll_locked)
+p_rst_pll_74 : process (clk_pll_74 , hdmi_pll_locked)
 begin
   if hdmi_pll_locked = '0' then
-    rst_pll_65    <= '1';
-    rst_pll_65_n  <= '0';
-  elsif rising_edge(clk_pll_65 ) then
-    rst_pll_65    <= '0';
-    rst_pll_65_n  <= '1';
+    rst_pll_74    <= '1';
+    rst_pll_74_n  <= '0';
+  elsif rising_edge(clk_pll_74 ) then
+    rst_pll_74    <= '0';
+    rst_pll_74_n  <= '1';
   end if;
-end process p_rst_pll_65 ;
+end process p_rst_pll_74 ;
+
+--! syncronous resets
+p_rst_pll_148 : process (clk_pll_148 , hdmi_pll_locked)
+begin
+  if hdmi_pll_locked = '0' then
+    rst_pll_148    <= '1';
+    rst_pll_148_n  <= '0';
+  elsif rising_edge(clk_pll_148 ) then
+    rst_pll_148    <= '0';
+    rst_pll_148_n  <= '1';
+  end if;
+end process p_rst_pll_148 ;
 
 --! general purpose pll, generate some clocks
 i_pll : pll
@@ -222,7 +238,8 @@ i_hdmi_pll : hdmi_pll
     refclk   => FPGA_CLK1_50,
     rst      => SW(0),
     outclk_0 => clk_pll_40,        --!  40 MHz
-    outclk_1 => clk_pll_65 ,       --!  148.5 MHz
+    outclk_1 => clk_pll_74 ,       --!  74 MHz
+    outclk_2 => clk_pll_148 ,      --! 148 MHz
     locked   => hdmi_pll_locked
   );
 
@@ -333,7 +350,8 @@ gen_imp_2: if g_imp = 2 generate
 
   i_timing_generator: entity work.timing_generator(rtl)
     generic map (
-      RESOLUTION  => "SVGA",
+      -- RESOLUTION  => "SVGA",
+      RESOLUTION  => "HD1080P",
       GEN_PIX_LOC => true,
       OBJECT_SIZE => OBJECT_SIZE
       )
@@ -350,12 +368,11 @@ gen_imp_2: if g_imp = 2 generate
   --! video_ram instance
   i_video_ram: entity work.video_ram(rtl)
     generic map (
-      RESOLUTION  => "SVGA",
       OBJECT_SIZE => OBJECT_SIZE,
       PIXEL_SIZE  => PIXEL_SIZE,
-      ram_d => ram_d,
-      ram_x => ram_x,
-      ram_y => ram_y
+      ram_d       => ram_d,
+      ram_x       => ram_x,
+      ram_y       => ram_y
       )
     port map (
       rst=>rst_pixel,
