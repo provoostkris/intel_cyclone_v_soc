@@ -14,13 +14,15 @@ set pll_out_0       [get_pins {i_pll|pll_inst|altera_pll_i|outclk_wire[0]~CLKENA
 set pll_out_1       [get_pins {i_pll|pll_inst|altera_pll_i|outclk_wire[1]~CLKENA0|outclk}]
 set hdmi_pll_out_0  [get_pins {i_hdmi_pll|hdmi_pll_inst|altera_pll_i|outclk_wire[0]~CLKENA0|outclk}]
 set hdmi_pll_out_1  [get_pins {i_hdmi_pll|hdmi_pll_inst|altera_pll_i|outclk_wire[1]~CLKENA0|outclk}]
+set hdmi_pll_out_2  [get_pins {i_hdmi_pll|hdmi_pll_inst|altera_pll_i|outclk_wire[2]~CLKENA0|outclk}]
 
-create_generated_clock -name clk_pll_out_0      -source  [get_ports {FPGA_CLK1_50}]  -divide_by 2  -multiply_by 1  $pll_out_0
-create_generated_clock -name clk_pll_out_1      -source  [get_ports {FPGA_CLK1_50}]  -divide_by 1  -multiply_by 1  $pll_out_1
-create_generated_clock -name hdmi_clk_pll_out_0 -source  [get_ports {FPGA_CLK1_50}]  -divide_by 5  -multiply_by 4  $hdmi_pll_out_0
-create_generated_clock -name hdmi_clk_pll_out_1 -source  [get_ports {FPGA_CLK1_50}]  -divide_by 10 -multiply_by 13 $hdmi_pll_out_1
+create_generated_clock -name clk_pll_out_0      -source  [get_ports {FPGA_CLK1_50}]  -divide_by 2  -multiply_by 1   $pll_out_0
+create_generated_clock -name clk_pll_out_1      -source  [get_ports {FPGA_CLK1_50}]  -divide_by 1  -multiply_by 1   $pll_out_1
+create_generated_clock -name hdmi_clk_pll_out_0 -source  [get_ports {FPGA_CLK1_50}]  -divide_by 5  -multiply_by 4   $hdmi_pll_out_0
+create_generated_clock -name hdmi_clk_pll_out_1 -source  [get_ports {FPGA_CLK1_50}]  -divide_by 50 -multiply_by 75  $hdmi_pll_out_1
+create_generated_clock -name hdmi_clk_pll_out_2 -source  [get_ports {FPGA_CLK1_50}]  -divide_by 50 -multiply_by 150 $hdmi_pll_out_2
 
-create_generated_clock -name hdmi_tx_clk        -source  $hdmi_pll_out_0             -divide_by 1 -multiply_by 1 [get_ports HDMI_TX_CLK]
+create_generated_clock -name hdmi_tx_clk        -source  $hdmi_pll_out_2             -divide_by 1 -multiply_by 1 [get_ports HDMI_TX_CLK]
 
 
 # set false paths from user I/O
