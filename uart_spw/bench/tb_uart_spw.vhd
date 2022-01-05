@@ -34,7 +34,7 @@ signal txd          : std_logic;
 
 --! stimuli
 constant  c_rx_data      : std_logic_vector(7 downto 0) := x"55";
-    
+
 begin
 
 	clk            <= not clk       after c_clk_per/2;
@@ -50,6 +50,7 @@ begin
 
 dummy_rx_data: process
 begin
+    assert false report " >> Send CHAR to RX " severity warning;
     --start idle
     rxd <= '1';
     wait for 5 us;
@@ -64,9 +65,10 @@ begin
     end loop;
     -- send stop bit
     rxd <= '1'; -- stop bit
-    
-    wait for 125 us;
-    
+
+    wait for 85 us;
+
+    assert false report " >> Send inverted CHAR to RX " severity warning;
     --start idle
     rxd <= '1';
     wait for 5 us;
@@ -81,11 +83,10 @@ begin
     end loop;
     -- send stop bit
     rxd <= '1'; -- stop bit
-    
-    
+
     wait;
 end process;
-    
+
 --! dut
 dut: entity work.uart_spw(rtl)
   port map (

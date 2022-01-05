@@ -108,7 +108,7 @@ echo "adding waves"
 
 echo "view wave forms"
 
-  run 1000 us
+  run 500 us
 
   configure wave -namecolwidth  280
   configure wave -valuecolwidth 120

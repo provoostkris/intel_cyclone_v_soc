@@ -72,6 +72,9 @@ set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to SW[1]
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to SW[2]
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to SW[3]
 
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to rxd
+set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to txd
+
 set_location_assignment PIN_V11 -to FPGA_CLK1_50
 set_location_assignment PIN_Y13 -to FPGA_CLK2_50
 set_location_assignment PIN_E11 -to FPGA_CLK3_50
@@ -90,6 +93,10 @@ set_location_assignment PIN_Y24 -to SW[0]
 set_location_assignment PIN_W24 -to SW[1]
 set_location_assignment PIN_W21 -to SW[2]
 set_location_assignment PIN_W20 -to SW[3]
+
+set_location_assignment PIN_AA11 -to rxd
+set_location_assignment PIN_Y15 -to txd
+
 
 set_global_assignment -name SDC_FILE ../constraints/uart_spw.sdc
 set_global_assignment -name QIP_FILE ../vhdl/pll/pll.qip
