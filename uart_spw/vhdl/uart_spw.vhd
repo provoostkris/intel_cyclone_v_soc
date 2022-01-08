@@ -191,9 +191,10 @@ i_uart : entity work.uart
 --!
 --clocks
 spw_0_clock                       <= clk_pll_50;
+spw_0_reset                       <= rst_pll_50;
+
 spw_0_transmitClock               <= clk_pll_50;
 spw_0_receiveClock                <= clk_pll_50;
-spw_0_reset                       <= rst_pll_50;
 --no time code
 spw_0_tickIn                      <= '0';
 spw_0_timeIn                      <= ( others => '0');
@@ -218,7 +219,7 @@ begin
   if spw_0_reset = '1' then
     s_axis_tvalid                 <= '0';
   elsif rising_edge(spw_0_clock) then
-    s_axis_tvalid                 <= not spw_0_receiveFIFOEmpty;
+    s_axis_tvalid                 <= not spw_0_receiveFIFOEmpty and s_axis_tready;
   end if;
 end process p_s_axis_tvalid;
 s_axis_tdata                      <= spw_0_receiveFIFODataOut(7 downto 0);

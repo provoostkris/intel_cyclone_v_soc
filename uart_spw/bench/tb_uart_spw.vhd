@@ -33,7 +33,8 @@ signal rxd          : std_logic;
 signal txd          : std_logic;
 
 --! stimuli
-constant  c_rx_data      : std_logic_vector(7 downto 0) := x"55";
+type      t_char    is array ( natural range <> ) of std_logic_vector(7 downto 0);
+constant  c_char    : t_char  := (x"11",x"12",x"13",x"14",x"15",x"16",x"17",x"18",x"19",x"1A",x"1B");
 
 begin
 
@@ -50,7 +51,9 @@ begin
 
 dummy_rx_data: process
 begin
-    assert false report " >> Send CHAR to RX " severity warning;
+
+  for j in c_char'range loop
+    assert false report " >> Send CHAR to RX (" & integer'image(j) & ")" severity warning;
     --start idle
     rxd <= '1';
     wait for 5 us;
@@ -60,31 +63,15 @@ begin
     wait for c_uart_clk_per;
     --data bits
     for i in 0 to 8-1 loop
-        rxd <= c_rx_data(i); -- data bits
+        rxd <= c_char(j)(i); -- data bits
         wait for c_uart_clk_per;
     end loop;
     -- send stop bit
     rxd <= '1'; -- stop bit
+  end loop;
 
-    wait for 85 us;
+  wait;
 
-    assert false report " >> Send inverted CHAR to RX " severity warning;
-    --start idle
-    rxd <= '1';
-    wait for 5 us;
-    wait until uart_clk'event and uart_clk = '1';
-    --pull start bit
-    rxd <= '0';
-    wait for c_uart_clk_per;
-    --data bits
-    for i in 0 to 8-1 loop
-        rxd <= not c_rx_data(i); -- data bits
-        wait for c_uart_clk_per;
-    end loop;
-    -- send stop bit
-    rxd <= '1'; -- stop bit
-
-    wait;
 end process;
 
 --! dut
@@ -99,6 +86,5 @@ dut: entity work.uart_spw(rtl)
     rxd               => rxd,
     txd               => txd
   );
-
 
 end architecture rtl;
