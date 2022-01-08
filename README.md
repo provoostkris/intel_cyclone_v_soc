@@ -19,7 +19,7 @@ A driver and controller for the
 [AMG8833](https://industry.panasonic.eu/components/sensors/industrial-sensors/grid-eye/amg88xx-high-performance-type/amg8833-amg8833)
 module. Supporting component initialisation, read out and averaging.
 
-### [uart <> spacewire bridge](/uart_spw)
+### [Serial to SpaceWire](/uart_spw)
 UART to spacewire bridge. Combines the following projects 
 [SpaceWireCODECIP_100MHz](https://github.com/provoostkris/SpaceWireCODECIP_100MHz) and 
 [vhdl-axis-uart](https://github.com/provoostkris/vhdl-axis-uart)
