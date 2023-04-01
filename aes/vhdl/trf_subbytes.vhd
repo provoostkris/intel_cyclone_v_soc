@@ -33,21 +33,19 @@ architecture rtl of trf_subbytes is
 
 begin
 
-
 gen_subbytes: for j in 0 to c_depth-1 generate
 
 --! map input to Sbox lookup's
   process(reset_n, clk) is
   begin
       if reset_n='0' then
-        subbytes_s_i(j) <= ( others => '0');
+        null;
       elsif rising_edge(clk) then
           subbytes_s_i(j) <= subbytes_s(j*8+7 downto j*8+0);
       end if;
   end process;
 
 --! use Sbox
-
 i_sbox : entity work.sbox
   port map(
     input_byte  => subbytes_s_i(j),
@@ -58,7 +56,7 @@ i_sbox : entity work.sbox
   process(reset_n, clk) is
   begin
       if reset_n='0' then
-        subbytes_m(j*8+7 downto j*8+0) <= ( others => '0');
+        null;
       elsif rising_edge(clk) then
           subbytes_m(j*8+7 downto j*8+0) <= subbytes_m_i(j);
       end if;
