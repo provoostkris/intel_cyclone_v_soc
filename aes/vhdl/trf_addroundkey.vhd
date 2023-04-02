@@ -35,7 +35,8 @@ begin
   process(reset_n, clk) is
   begin
       if reset_n='0' then
-        null;
+        in_bytes_i         <= ( others => ( others => '0'));
+        in_bytes_subkey_i  <= ( others => ( others => '0'));
       elsif rising_edge(clk) then
         in_bytes_i         <= f_slv_to_bytes(addroundkey_s);
         in_bytes_subkey_i  <= f_slv_to_bytes(subkey_s);
@@ -46,7 +47,7 @@ begin
   process(reset_n, clk) is
   begin
       if reset_n='0' then
-        null;
+        out_bytes_i  <= ( others => ( others => '0'));
       elsif rising_edge(clk) then
         for j in 0 to c_arr-1 loop
           out_bytes_i(j)   <= in_bytes_i(j) xor in_bytes_subkey_i(j);
@@ -55,6 +56,13 @@ begin
   end process;
 
 --! map 'output bytes' to slv
-addroundkey_m  <= f_bytes_to_slv(out_bytes_i);
-
+  process(reset_n, clk) is
+  begin
+      if reset_n='0' then
+        addroundkey_m   <= ( others => '0');
+      elsif rising_edge(clk) then
+        addroundkey_m   <= f_bytes_to_slv(out_bytes_i);
+      end if;
+  end process;
+  
 end rtl;

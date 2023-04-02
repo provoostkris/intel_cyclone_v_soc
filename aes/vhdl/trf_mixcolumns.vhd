@@ -39,7 +39,8 @@ begin
   process(reset_n, clk) is
   begin
       if reset_n='0' then
-        null;
+
+        in_bytes_i         <= ( others => ( others => '0'));
       elsif rising_edge(clk) then
         in_bytes_i  <= f_slv_to_bytes(mixcolumns_s);
       end if;
@@ -92,12 +93,12 @@ end generate;
         end loop;
       end if;
   end process;
-  
+
 --! map state matrix to output bytes
   process(reset_n, clk) is
   begin
       if reset_n='0' then
-        null;
+        out_bytes_i <= ( others => ( others => '0'));
       elsif rising_edge(clk) then
         out_bytes_i <= f_state_to_bytes(state_m_i);
       end if;

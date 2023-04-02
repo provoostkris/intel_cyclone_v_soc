@@ -39,7 +39,7 @@ in_bytes_i  <= f_slv_to_bytes(shiftrows_s);
   process(reset_n, clk) is
   begin
       if reset_n='0' then
-        null;
+        state_s_i <= ( others => ( others => ( others => '0')));
       elsif rising_edge(clk) then
         state_s_i <= f_bytes_to_state(in_bytes_i);
       end if;
@@ -78,7 +78,7 @@ in_bytes_i  <= f_slv_to_bytes(shiftrows_s);
   process(reset_n, clk) is
   begin
       if reset_n='0' then
-        null;
+        out_bytes_i <= ( others => ( others => '0'));
       elsif rising_edge(clk) then
         out_bytes_i <= f_state_to_bytes(state_m_i);
       end if;
