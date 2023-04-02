@@ -19,8 +19,8 @@ echo "Compiling test bench"
 
 echo "start simulation"
 
-  #vsim -gui -t ps -novopt work.tb_trf_subbytes
-  vsim -gui -t ps -novopt work.tb_trf_shiftrows
+  vsim -gui -t ps -novopt work.tb_trf_subbytes
+  #vsim -gui -t ps -novopt work.tb_trf_shiftrows
 
 echo "adding waves"
 

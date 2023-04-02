@@ -10,6 +10,9 @@ use ieee.numeric_std.all;
 -- just for random functions
 use ieee.math_real.all;
 
+library work;
+use     work.aes_pkg.all;
+
 entity tb_trf_subbytes is
 	port(
 		y        :  out std_logic
@@ -19,7 +22,6 @@ end entity tb_trf_subbytes;
 architecture rtl of tb_trf_subbytes is
 
 constant c_clk_per  : time      := 20 ns ;
-constant c_size     : natural   := 2**7;
 
 signal clk          : std_ulogic :='0';
 signal rst          : std_ulogic :='0';
@@ -27,8 +29,8 @@ signal rst_n        : std_ulogic ;
 
 --! DUT ports
 
-signal subbytes_s    : std_logic_vector(c_size-1 downto 0);
-signal subbytes_m    : std_logic_vector(c_size-1 downto 0);
+signal subbytes_s    : std_logic_vector(c_seq-1 downto 0);
+signal subbytes_m    : std_logic_vector(c_seq-1 downto 0);
 
 --! procedures
 procedure proc_wait_clk
@@ -47,9 +49,6 @@ begin
 
 --! dut
 dut: entity work.trf_subbytes(rtl)
-  generic map(
-    g_size  => c_size
-  )
   port map (
     clk               => clk,
     reset_n           => rst_n,
@@ -80,7 +79,7 @@ dut: entity work.trf_subbytes(rtl)
 	    proc_wait_clk(2);
 
 	  report " RUN TST.01 ";
-			for k in 0 to c_size/8-1 loop
+			for k in 0 to c_seq/8-1 loop
 	    	 subbytes_s(k*8+7 downto k*8+0)     <= std_logic_vector(to_unsigned(k,8)) ;
 		  end loop;
 	    proc_reset(3);
