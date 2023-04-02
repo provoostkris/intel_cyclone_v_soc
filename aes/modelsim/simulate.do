@@ -8,19 +8,23 @@ echo "Compiling design"
   ensure_lib work
 
     vcom  -quiet -work work ../vhdl/aes_pkg.vhd
+    vcom  -quiet -work work ../vhdl/galois_mul.vhd
     vcom  -quiet -work work ../vhdl/sbox.vhd
     vcom  -quiet -work work ../vhdl/trf_subbytes.vhd
     vcom  -quiet -work work ../vhdl/trf_shiftrows.vhd
+    vcom  -quiet -work work ../vhdl/trf_mixcolumns.vhd
 
 echo "Compiling test bench"
 
   vcom  -quiet -work work ../bench/tb_trf_subbytes.vhd
   vcom  -quiet -work work ../bench/tb_trf_shiftrows.vhd
+  vcom  -quiet -work work ../bench/tb_trf_mixcolumns.vhd
 
 echo "start simulation"
 
-  vsim -gui -t ps -novopt work.tb_trf_subbytes
+  #vsim -gui -t ps -novopt work.tb_trf_subbytes
   #vsim -gui -t ps -novopt work.tb_trf_shiftrows
+  vsim -gui -t ps -novopt work.tb_trf_mixcolumns
 
 echo "adding waves"
 

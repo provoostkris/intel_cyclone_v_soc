@@ -8,6 +8,9 @@ use     ieee.std_logic_1164.all;
 use     ieee.numeric_std.all;
 use     ieee.std_logic_misc.all;
 
+library work;
+use     work.aes_pkg.all;
+
 entity aes is
   generic (
     g_imp             : in    natural range 0 to 2 := 2
@@ -27,16 +30,19 @@ end;
 
 architecture rtl of aes is
 
-constant c_size     : natural   := 2**7;
-
 signal rst_50    : std_logic;
 signal rst_50_n  : std_logic;
 signal clk_50    : std_logic;
 
 -- local signals
-signal subbytes_s    : std_logic_vector(c_size-1 downto 0);
-signal subbytes_m    : std_logic_vector(c_size-1 downto 0);
+signal subbytes_s    : std_logic_vector(c_seq-1 downto 0);
+signal subbytes_m    : std_logic_vector(c_seq-1 downto 0);
 
+signal shiftrows_s   : std_logic_vector(c_seq-1 downto 0);
+signal shiftrows_m   : std_logic_vector(c_seq-1 downto 0);
+
+signal mixcolumns_s  : std_logic_vector(c_seq-1 downto 0);
+signal mixcolumns_m  : std_logic_vector(c_seq-1 downto 0);
 
 begin
 
@@ -71,22 +77,41 @@ end process p_rst_50;
 
 -- dummy input assignment unit design is READY
 
-  gen_dummy: for k in 0 to c_size-1 generate
+  gen_dummy: for k in 0 to c_seq-1 generate
      subbytes_s(k)     <= SW(0) ;
   end generate;
 
-  status <= or_reduce(subbytes_m);
+  status <= or_reduce(mixcolumns_m);
 
 i_trf_subbytes: entity work.trf_subbytes(rtl)
-  generic map(
-    g_size  => c_size
-  )
   port map (
     clk               => clk_50,
     reset_n           => rst_50_n,
 
 		subbytes_s        => subbytes_s,
     subbytes_m        => subbytes_m
+  );
+
+shiftrows_s <= subbytes_m;
+
+trf_shiftrows: entity work.trf_shiftrows(rtl)
+  port map (
+    clk               => clk_50,
+    reset_n           => rst_50_n,
+
+		shiftrows_s        => shiftrows_s,
+    shiftrows_m        => shiftrows_m
+  );
+
+mixcolumns_s <= shiftrows_m;
+
+i_trf_mixcolumns: entity work.trf_mixcolumns(rtl)
+  port map (
+    clk               => clk_50,
+    reset_n           => rst_50_n,
+
+		mixcolumns_s        => mixcolumns_s,
+    mixcolumns_m        => mixcolumns_m
   );
 
 --! just blink LED to see activity
