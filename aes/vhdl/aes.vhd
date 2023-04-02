@@ -44,6 +44,10 @@ signal shiftrows_m   : std_logic_vector(c_seq-1 downto 0);
 signal mixcolumns_s  : std_logic_vector(c_seq-1 downto 0);
 signal mixcolumns_m  : std_logic_vector(c_seq-1 downto 0);
 
+signal addroundkey_s  : std_logic_vector(c_seq-1 downto 0);
+signal subkey_s       : std_logic_vector(c_seq-1 downto 0);
+signal addroundkey_m  : std_logic_vector(c_seq-1 downto 0);
+
 begin
 
 
@@ -81,7 +85,7 @@ end process p_rst_50;
      subbytes_s(k)     <= SW(0) ;
   end generate;
 
-  status <= or_reduce(mixcolumns_m);
+  status <= or_reduce(addroundkey_m);
 
 i_trf_subbytes: entity work.trf_subbytes(rtl)
   port map (
@@ -99,8 +103,8 @@ trf_shiftrows: entity work.trf_shiftrows(rtl)
     clk               => clk_50,
     reset_n           => rst_50_n,
 
-		shiftrows_s        => shiftrows_s,
-    shiftrows_m        => shiftrows_m
+		shiftrows_s       => shiftrows_s,
+    shiftrows_m       => shiftrows_m
   );
 
 mixcolumns_s <= shiftrows_m;
@@ -110,10 +114,22 @@ i_trf_mixcolumns: entity work.trf_mixcolumns(rtl)
     clk               => clk_50,
     reset_n           => rst_50_n,
 
-		mixcolumns_s        => mixcolumns_s,
-    mixcolumns_m        => mixcolumns_m
+		mixcolumns_s      => mixcolumns_s,
+    mixcolumns_m      => mixcolumns_m
   );
+  
+addroundkey_s <= mixcolumns_m;
+subkey_s      <= shiftrows_m;
 
+i_trf_addroundkey: entity work.trf_addroundkey(rtl)
+  port map (
+    clk               => clk_50,
+    reset_n           => rst_50_n,
+
+		addroundkey_s     => addroundkey_s,
+		subkey_s          => subkey_s,
+    addroundkey_m     => addroundkey_m
+  );
 --! just blink LED to see activity
 p_led: process (clk_50, rst_50)
   variable v_cnt : unsigned(24 downto 0);
