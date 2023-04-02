@@ -13,18 +13,21 @@ echo "Compiling design"
     vcom  -quiet -work work ../vhdl/trf_subbytes.vhd
     vcom  -quiet -work work ../vhdl/trf_shiftrows.vhd
     vcom  -quiet -work work ../vhdl/trf_mixcolumns.vhd
+    vcom  -quiet -work work ../vhdl/trf_addroundkey.vhd
 
 echo "Compiling test bench"
 
   vcom  -quiet -work work ../bench/tb_trf_subbytes.vhd
   vcom  -quiet -work work ../bench/tb_trf_shiftrows.vhd
   vcom  -quiet -work work ../bench/tb_trf_mixcolumns.vhd
+  vcom  -quiet -work work ../bench/tb_trf_addroundkey.vhd
 
 echo "start simulation"
 
   #vsim -gui -t ps -novopt work.tb_trf_subbytes
   #vsim -gui -t ps -novopt work.tb_trf_shiftrows
-  vsim -gui -t ps -novopt work.tb_trf_mixcolumns
+  #vsim -gui -t ps -novopt work.tb_trf_mixcolumns
+  vsim -gui -t ps -novopt work.tb_trf_addroundkey
 
 echo "adding waves"
 
