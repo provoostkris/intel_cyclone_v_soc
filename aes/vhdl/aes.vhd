@@ -98,7 +98,7 @@ i_trf_subbytes: entity work.trf_subbytes(rtl)
 
 shiftrows_s <= subbytes_m;
 
-trf_shiftrows: entity work.trf_shiftrows(rtl)
+i_trf_shiftrows: entity work.trf_shiftrows(rtl)
   port map (
     clk               => clk_50,
     reset_n           => rst_50_n,

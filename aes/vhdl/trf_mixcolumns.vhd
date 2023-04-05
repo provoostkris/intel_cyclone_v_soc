@@ -39,8 +39,7 @@ begin
   process(reset_n, clk) is
   begin
       if reset_n='0' then
-
-        in_bytes_i         <= ( others => ( others => '0'));
+        in_bytes_i  <= ( others => ( others => '0'));
       elsif rising_edge(clk) then
         in_bytes_i  <= f_slv_to_bytes(mixcolumns_s);
       end if;
@@ -65,7 +64,9 @@ end generate;
   process(reset_n, clk) is
   begin
       if reset_n='0' then
-        null;
+        state_s_i         <= ( others => ( others => ( others => '0')));
+        state_s_mul_2_i   <= ( others => ( others => ( others => '0')));
+        state_s_mul_3_i   <= ( others => ( others => ( others => '0')));
       elsif rising_edge(clk) then
         state_s_i         <= f_bytes_to_state(in_bytes_i);
         state_s_mul_2_i   <= f_bytes_to_state(in_bytes_mul_2_i);
@@ -73,12 +74,11 @@ end generate;
       end if;
   end process;
 
-
 --! perform the shift row operation
   process(reset_n, clk) is
   begin
       if reset_n='0' then
-        null;
+        state_m_i <= ( others => ( others => ( others => '0')));
       elsif rising_edge(clk) then
         --! pseudo code for each element in the array to be calculated
         -- r[0] = b[0] ^ a[3] ^ a[2] ^ b[1] ^ a[1]; /* 2 * a0 + a3 + a2 + 3 * a1 */

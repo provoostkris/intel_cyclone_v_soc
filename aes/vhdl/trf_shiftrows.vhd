@@ -49,7 +49,7 @@ in_bytes_i  <= f_slv_to_bytes(shiftrows_s);
   process(reset_n, clk) is
   begin
       if reset_n='0' then
-        null;
+        state_m_i <= ( others => ( others => ( others => '0')));
       elsif rising_edge(clk) then
         -- shift is zero elements in first row
         state_m_i(0)(0)   <= state_s_i(0)(0);
