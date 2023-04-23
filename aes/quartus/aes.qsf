@@ -102,6 +102,7 @@ set_global_assignment -name VHDL_FILE ../vhdl/trf_addroundkey.vhd
 set_global_assignment -name VHDL_FILE ../vhdl/key_expand.vhd
 set_global_assignment -name VHDL_FILE ../vhdl/aes.vhd
 
+set_global_assignment -name SDC_FILE ../constraints/aes.sdc
 
 set_global_assignment -name EDA_SIMULATION_TOOL "ModelSim (VHDL)"
 set_global_assignment -name EDA_TIME_SCALE "1 ps" -section_id eda_simulation
