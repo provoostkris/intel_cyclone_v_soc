@@ -20,10 +20,15 @@ package aes_pkg is
   constant c_nk     : natural :=  8; --! key length (words)
   constant c_nb     : natural :=  4; --! block size (words)
   constant c_nr     : natural := 14; --! number of rounds
+  
+  
+  constant c_ref_plain : std_logic_vector(0 to 127) := x"00112233445566778899aabbccddeeff" ; --! value from fips 197 document
+  constant c_ref_key   : std_logic_vector(0 to 255) := x"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"; --! value from fips 197 document
 
   type t_raw_bytes          is array ( integer range <> ) of std_logic_vector( 7 downto 0);
   type t_state_bytes        is array ( integer range <> ) of t_raw_bytes ( 0 to 3);
-  type t_raw_words          is array ( integer range <> ) of std_logic_vector(31 downto 0);
+  type t_raw_words          is array ( integer range <> ) of std_logic_vector(0 to 31);
+  type t_round_vec          is array ( integer range <> ) of std_logic_vector(0 to c_seq-1);
 
   --https://en.wikipedia.org/wiki/AES_key_schedule
   constant c_rcon   : t_raw_bytes(1 to 29) := (
@@ -124,7 +129,7 @@ package body aes_pkg is
   begin
     v_result := ( others => ( others => '0'));
     for j in v_result'range loop
-      v_result(j) := x(j*8+7 downto j*8+0);
+      v_result(j) := x(j*8+0 to j*8+7);
     end loop;
     return v_result;
   end f_slv_to_bytes;
@@ -136,35 +141,35 @@ package body aes_pkg is
     v_result := ( others => ( others => '0'));
     for j in v_result'range loop
       -- mind the endianess swap according to FIPS pub 197
-      v_result(j)(0*8+7 downto 0*8) := x(j*32+3*8+7 downto j*32+3*8);
-      v_result(j)(1*8+7 downto 1*8) := x(j*32+2*8+7 downto j*32+2*8);
-      v_result(j)(2*8+7 downto 2*8) := x(j*32+1*8+7 downto j*32+1*8);
-      v_result(j)(3*8+7 downto 3*8) := x(j*32+0*8+7 downto j*32+0*8);
+      v_result(j)(0*8+0 to 0*8+7) := x(j*32+0*8+0 to j*32+0*8+7);
+      v_result(j)(1*8+0 to 1*8+7) := x(j*32+1*8+0 to j*32+1*8+7);
+      v_result(j)(2*8+0 to 2*8+7) := x(j*32+2*8+0 to j*32+2*8+7);
+      v_result(j)(3*8+0 to 3*8+7) := x(j*32+3*8+0 to j*32+3*8+7);
     end loop;
     return v_result;
   end f_slv_to_words;
 
   --! conversion of an array of bytes to a std_logic_vector
   function f_bytes_to_slv(x: t_raw_bytes) return std_logic_vector is
-    variable v_result: std_logic_vector(c_seq-1 downto 0);
+    variable v_result: std_logic_vector(0 to c_seq-1);
   begin
     v_result := ( others => '0');
     for j in 0 to c_arr-1 loop
-      v_result(j*8+7 downto j*8+0) := x(j);
+      v_result(j*8+0 to j*8+7) := x(j);
     end loop;
     return v_result;
   end f_bytes_to_slv;
   
   --! conversion of an array of words to a std_logic_vector
   function f_words_to_slv(x: t_raw_words) return std_logic_vector is
-    variable v_result: std_logic_vector(c_key-1 downto 0);
+    variable v_result: std_logic_vector(0 to c_key-1);
   begin
     v_result := ( others => '0');
     for j in 0 to (c_key/32)-1 loop
-      v_result(j*32+0*8+7 downto j*32+0*8) := x(j)(3*8+7 downto 3*8);
-      v_result(j*32+1*8+7 downto j*32+1*8) := x(j)(2*8+7 downto 2*8);
-      v_result(j*32+2*8+7 downto j*32+2*8) := x(j)(1*8+7 downto 1*8);
-      v_result(j*32+3*8+7 downto j*32+3*8) := x(j)(0*8+7 downto 0*8);
+      v_result(j*32+0*8+0 to j*32+0*8+7) := x(j)(0*8+0 to 0*8+7);
+      v_result(j*32+1*8+0 to j*32+1*8+7) := x(j)(1*8+0 to 1*8+7);
+      v_result(j*32+2*8+0 to j*32+2*8+7) := x(j)(2*8+0 to 2*8+7);
+      v_result(j*32+3*8+0 to j*32+3*8+7) := x(j)(3*8+0 to 3*8+7);
     end loop;
     return v_result;
   end f_words_to_slv;
@@ -197,24 +202,24 @@ package body aes_pkg is
 
   --! rotation function as defined in the AES standard for key expansion
   function f_rotword(x: std_logic_vector) return std_logic_vector is
-    variable v_result: std_logic_vector(31 downto 0);
+    variable v_result: std_logic_vector(0 to 31);
   begin
     -- note the endianess in FIPS pub 197 when rotating
-    v_result(3*8+7 downto 3*8) := x(2*8+7 downto 2*8);
-    v_result(2*8+7 downto 2*8) := x(1*8+7 downto 1*8);
-    v_result(1*8+7 downto 1*8) := x(0*8+7 downto 0*8);
-    v_result(0*8+7 downto 0*8) := x(3*8+7 downto 3*8);
+    v_result(0*8+0 to 0*8+7) := x(1*8+0 to 1*8+7);
+    v_result(1*8+0 to 1*8+7) := x(2*8+0 to 2*8+7);
+    v_result(2*8+0 to 2*8+7) := x(3*8+0 to 3*8+7);
+    v_result(3*8+0 to 3*8+7) := x(0*8+0 to 0*8+7);
     return v_result;
   end f_rotword;
 
   --! substitution function as defined in the AES standard for key expansion
   function f_subword(x: std_logic_vector) return std_logic_vector is
-    variable v_result: std_logic_vector(31 downto 0);
+    variable v_result: std_logic_vector(0 to 31);
   begin
-    v_result(0*8+7 downto 0*8) := c_lut_nor(to_integer(unsigned(x(0*8+7 downto 0*8))));
-    v_result(1*8+7 downto 1*8) := c_lut_nor(to_integer(unsigned(x(1*8+7 downto 1*8))));
-    v_result(2*8+7 downto 2*8) := c_lut_nor(to_integer(unsigned(x(2*8+7 downto 2*8))));
-    v_result(3*8+7 downto 3*8) := c_lut_nor(to_integer(unsigned(x(3*8+7 downto 3*8))));
+    v_result(0*8+0 to 0*8+7) := c_lut_nor(to_integer(unsigned(x(0*8+0 to 0*8+7))));
+    v_result(1*8+0 to 1*8+7) := c_lut_nor(to_integer(unsigned(x(1*8+0 to 1*8+7))));
+    v_result(2*8+0 to 2*8+7) := c_lut_nor(to_integer(unsigned(x(2*8+0 to 2*8+7))));
+    v_result(3*8+0 to 3*8+7) := c_lut_nor(to_integer(unsigned(x(3*8+0 to 3*8+7))));
     return v_result;
   end f_subword;
 

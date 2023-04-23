@@ -15,9 +15,11 @@ entity trf_mixcolumns is
   port(
     clk           : in  std_logic;                    --system clock
     reset_n       : in  std_logic;                    --active low reset
-
-    mixcolumns_s  : in  std_logic_vector(c_seq-1 downto 0);
-    mixcolumns_m  : out std_logic_vector(c_seq-1 downto 0)
+    
+    round_s       : in  integer range 1 to c_nr;
+    
+    mixcolumns_s  : in  std_logic_vector(0 to c_seq-1);
+    mixcolumns_m  : out std_logic_vector(0 to c_seq-1)
   );
 end trf_mixcolumns;
 
@@ -105,6 +107,7 @@ end generate;
   end process;
 
 --! map 'output bytes' to slv
-mixcolumns_m  <= f_bytes_to_slv(out_bytes_i);
+--! note that in the last round the mixcolumns function is disabled as per FIPS standard
+mixcolumns_m  <= f_bytes_to_slv(out_bytes_i) when round_s < c_nr else mixcolumns_s;
 
 end rtl;

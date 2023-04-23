@@ -16,8 +16,8 @@ entity trf_subbytes is
     clk           : in  std_logic;                    --system clock
     reset_n       : in  std_logic;                    --active low reset
 
-    subbytes_s    : in  std_logic_vector(c_seq-1 downto 0);
-    subbytes_m    : out std_logic_vector(c_seq-1 downto 0)
+    subbytes_s    : in  std_logic_vector(0 to c_seq-1);
+    subbytes_m    : out std_logic_vector(0 to c_seq-1)
   );
 end trf_subbytes;
 

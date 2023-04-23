@@ -16,7 +16,7 @@ entity key_expand is
     clk           : in  std_logic;                    --system clock
     reset_n       : in  std_logic;                    --active low reset
 
-    keyexpand_s   : in  std_logic_vector(c_key-1 downto 0);
+    keyexpand_s   : in  std_logic_vector(0 to c_key-1);
     keyexpand_m   : out t_raw_words ( 0 to c_nb*(c_nr+1)-1)
   );
 end key_expand;

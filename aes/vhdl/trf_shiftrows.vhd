@@ -16,8 +16,8 @@ entity trf_shiftrows is
     clk           : in  std_logic;                --system clock
     reset_n       : in  std_logic;                --active low reset
 
-    shiftrows_s   : in  std_logic_vector(c_seq-1 downto 0);
-    shiftrows_m   : out std_logic_vector(c_seq-1 downto 0)
+    shiftrows_s   : in  std_logic_vector(0 to c_seq-1);
+    shiftrows_m   : out std_logic_vector(0 to c_seq-1)
   );
 end trf_shiftrows;
 
@@ -36,14 +36,7 @@ begin
 in_bytes_i  <= f_slv_to_bytes(shiftrows_s);
 
 --! map input to state matrix
-  process(reset_n, clk) is
-  begin
-      if reset_n='0' then
-        state_s_i <= ( others => ( others => ( others => '0')));
-      elsif rising_edge(clk) then
-        state_s_i <= f_bytes_to_state(in_bytes_i);
-      end if;
-  end process;
+state_s_i <= f_bytes_to_state(in_bytes_i);
 
 --! perform the shift row operation
   process(reset_n, clk) is
@@ -75,14 +68,7 @@ in_bytes_i  <= f_slv_to_bytes(shiftrows_s);
   end process;
 
 --! map state matrix to output bytes
-  process(reset_n, clk) is
-  begin
-      if reset_n='0' then
-        out_bytes_i <= ( others => ( others => '0'));
-      elsif rising_edge(clk) then
-        out_bytes_i <= f_state_to_bytes(state_m_i);
-      end if;
-  end process;
+out_bytes_i <= f_state_to_bytes(state_m_i);
 
 --! map 'output bytes' to slv
 shiftrows_m  <= f_bytes_to_slv(out_bytes_i);
