@@ -29,8 +29,8 @@ signal rst_n        : std_ulogic ;
 
 --! DUT ports
 
-signal shiftrows_s    : std_logic_vector(c_seq-1 downto 0);
-signal shiftrows_m    : std_logic_vector(c_seq-1 downto 0);
+signal shiftrows_s    : std_logic_vector(0 to c_seq-1);
+signal shiftrows_m    : std_logic_vector(0 to c_seq-1);
 
 --! procedures
 procedure proc_wait_clk
@@ -80,7 +80,7 @@ dut: entity work.trf_shiftrows(rtl)
 
 	  report " RUN TST.01 ";
 			for k in 0 to c_arr-1 loop
-	    	 shiftrows_s(k*8+7 downto k*8+0)     <= std_logic_vector(to_unsigned(k,8)) ;
+	    	 shiftrows_s(k*8+0 to k*8+7)     <= std_logic_vector(to_unsigned(k,8)) ;
 		  end loop;
 	    proc_reset(3);
 	    proc_wait_clk(2);

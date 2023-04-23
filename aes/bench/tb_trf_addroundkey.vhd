@@ -29,9 +29,9 @@ signal rst_n        : std_ulogic ;
 
 --! DUT ports
 
-signal addroundkey_s    : std_logic_vector(c_seq-1 downto 0);
-signal subkey_s         : std_logic_vector(c_seq-1 downto 0);
-signal addroundkey_m    : std_logic_vector(c_seq-1 downto 0);
+signal addroundkey_s    : std_logic_vector(0 to c_seq-1);
+signal roundkey_s       : std_logic_vector(0 to c_seq-1);
+signal addroundkey_m    : std_logic_vector(0 to c_seq-1);
 
 --! procedures
 procedure proc_wait_clk
@@ -55,7 +55,7 @@ dut: entity work.trf_addroundkey(rtl)
     reset_n           => rst_n,
 
 		addroundkey_s        => addroundkey_s,
-		subkey_s             => subkey_s,
+		roundkey_s           => roundkey_s,
     addroundkey_m        => addroundkey_m
   );
 
@@ -77,14 +77,14 @@ dut: entity work.trf_addroundkey(rtl)
 
 	  report " RUN TST.00 ";
 	    addroundkey_s     <= ( others => '0');
-	    subkey_s          <= ( others => '0');
+	    roundkey_s        <= ( others => '0');
 	    proc_reset(3);
 	    proc_wait_clk(2);
 
 	  report " RUN TST.01 ";
 			for k in 0 to c_arr-1 loop
-	    	 addroundkey_s(k*8+7 downto k*8+0)  <= std_logic_vector(to_unsigned(k+0,8)) ;
-	    	 subkey_s(k*8+7 downto k*8+0)       <= std_logic_vector(to_unsigned(k+c_arr,8)) ;
+	    	 addroundkey_s(k*8+0 to k*8+7)  <= std_logic_vector(to_unsigned(k+0,8)) ;
+	    	 roundkey_s(k*8+0 to k*8+7)     <= std_logic_vector(to_unsigned(k+c_arr,8)) ;
 		  end loop;
 	    proc_reset(3);
 	    proc_wait_clk(2);
