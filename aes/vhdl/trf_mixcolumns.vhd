@@ -15,9 +15,9 @@ entity trf_mixcolumns is
   port(
     clk           : in  std_logic;                    --system clock
     reset_n       : in  std_logic;                    --active low reset
-    
+
     round_s       : in  integer range 1 to c_nr;
-    
+
     mixcolumns_s  : in  std_logic_vector(0 to c_seq-1);
     mixcolumns_m  : out std_logic_vector(0 to c_seq-1)
   );
@@ -38,14 +38,7 @@ architecture rtl of trf_mixcolumns is
 begin
 
 --! map input slv to 'input bytes'
-  process(reset_n, clk) is
-  begin
-      if reset_n='0' then
-        in_bytes_i  <= ( others => ( others => '0'));
-      elsif rising_edge(clk) then
-        in_bytes_i  <= f_slv_to_bytes(mixcolumns_s);
-      end if;
-  end process;
+in_bytes_i  <= f_slv_to_bytes(mixcolumns_s);
 
 --! create array which is the input bytes multiplied in galois by 2 or 3
 gen_mul_states: for j in 0 to c_arr-1 generate
@@ -63,18 +56,23 @@ gen_mul_states: for j in 0 to c_arr-1 generate
 end generate;
 
 --! map input to state matrix
-  process(reset_n, clk) is
-  begin
-      if reset_n='0' then
-        state_s_i         <= ( others => ( others => ( others => '0')));
-        state_s_mul_2_i   <= ( others => ( others => ( others => '0')));
-        state_s_mul_3_i   <= ( others => ( others => ( others => '0')));
-      elsif rising_edge(clk) then
+  -- process(reset_n, clk) is
+  -- begin
+      -- if reset_n='0' then
+        -- state_s_i         <= ( others => ( others => ( others => '0')));
+        -- state_s_mul_2_i   <= ( others => ( others => ( others => '0')));
+        -- state_s_mul_3_i   <= ( others => ( others => ( others => '0')));
+      -- elsif rising_edge(clk) then
+        -- state_s_i         <= f_bytes_to_state(in_bytes_i);
+        -- state_s_mul_2_i   <= f_bytes_to_state(in_bytes_mul_2_i);
+        -- state_s_mul_3_i   <= f_bytes_to_state(in_bytes_mul_3_i);
+      -- end if;
+  -- end process;
+
         state_s_i         <= f_bytes_to_state(in_bytes_i);
         state_s_mul_2_i   <= f_bytes_to_state(in_bytes_mul_2_i);
         state_s_mul_3_i   <= f_bytes_to_state(in_bytes_mul_3_i);
-      end if;
-  end process;
+
 
 --! perform the shift row operation
   process(reset_n, clk) is

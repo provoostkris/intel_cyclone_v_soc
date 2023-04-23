@@ -56,13 +56,6 @@ begin
   end process;
 
 --! map 'output bytes' to slv
-  process(reset_n, clk) is
-  begin
-      if reset_n='0' then
-        addroundkey_m   <= ( others => '0');
-      elsif rising_edge(clk) then
-        addroundkey_m   <= f_bytes_to_slv(out_bytes_i);
-      end if;
-  end process;
-  
+addroundkey_m   <= f_bytes_to_slv(out_bytes_i);
+
 end rtl;

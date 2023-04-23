@@ -60,13 +60,15 @@ gen_keyexpand_round: for j in c_nk to c_nb*(c_nr+1)-1 generate
 end generate;
   
 --! map the expanded keys to the output array
-  process(reset_n, clk) is
-  begin
-      if reset_n='0' then
-        keyexpand_m  <= ( others => ( others => '0'));
-      elsif rising_edge(clk) then
+  -- process(reset_n, clk) is
+  -- begin
+      -- if reset_n='0' then
+        -- keyexpand_m  <= ( others => ( others => '0'));
+      -- elsif rising_edge(clk) then
+        -- keyexpand_m  <= round_keys_i;
+      -- end if;
+  -- end process;
+  
         keyexpand_m  <= round_keys_i;
-      end if;
-  end process;
 
 end rtl;
