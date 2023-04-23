@@ -27,6 +27,12 @@ echo "adding waves"
 
 echo "view wave forms"
 
+  set NumericStdNoWarnings 1
+  set StdArithNoWarnings 1
+  run 1 ns
+  set NumericStdNoWarnings 0
+  set StdArithNoWarnings 0
+
   run 10 us
 
   configure wave -namecolwidth  370
